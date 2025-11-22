@@ -1,0 +1,24 @@
+{
+  "name": "@sdet-wcag-toolkit/static-analyzer",
+  "version": "0.0.0",
+  "description": "Static analysis of source code for WCAG 2.2 AA issues",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "echo \"(no tests yet)\"",
+    "lint": "echo \"(no lint yet)\""
+  },
+  "dependencies": {
+    "@sdet-wcag-toolkit/core": "workspace:*"
+  }
+}
