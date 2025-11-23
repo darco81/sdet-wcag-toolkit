@@ -15,7 +15,12 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "echo \"(no tests yet)\"",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
     "lint": "echo \"(no lint yet)\""
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.4",
+    "vitest": "^2.1.4"
   }
 }
