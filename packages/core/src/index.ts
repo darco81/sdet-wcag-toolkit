@@ -13,3 +13,12 @@ export {
   findSuccessCriterion,
   requireSuccessCriterion,
 } from './wcag-catalog.js';
+
+export type { SeverityBreakdown, WcagGrade } from './severity.js';
+export {
+  SEVERITY_WEIGHT,
+  aggregateScore,
+  countBySeverity,
+  gradeFor,
+  gradeWithCriticalPenalty,
+} from './severity.js';
