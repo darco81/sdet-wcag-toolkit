@@ -22,3 +22,12 @@ export {
   gradeFor,
   gradeWithCriticalPenalty,
 } from './severity.js';
+
+export type { EffortFn, FixEffort } from './priority.js';
+export {
+  DEFAULT_EFFORT,
+  DEFAULT_RULE_EFFORT,
+  effortOf,
+  priorityOf,
+  sortByPriority,
+} from './priority.js';
