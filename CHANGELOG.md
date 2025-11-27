@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial monorepo scaffold with pnpm workspaces
 - TypeScript base configuration
 - Prettier and editorconfig setup
+- `@sdet-wcag-toolkit/core`: shared types, WCAG 2.2 A/AA catalog (55 criteria),
+  severity weights with A-F grading, and per-finding priority scoring
 
 ## [0.1.0] - TBD
 
