@@ -38,6 +38,10 @@ importers:
       '@sdet-wcag-toolkit/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9
 
 packages:
 
