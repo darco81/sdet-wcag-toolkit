@@ -20,7 +20,8 @@
     "lint": "echo \"(no lint yet)\""
   },
   "dependencies": {
-    "@sdet-wcag-toolkit/core": "workspace:*"
+    "@sdet-wcag-toolkit/core": "workspace:*",
+    "cheerio": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",
