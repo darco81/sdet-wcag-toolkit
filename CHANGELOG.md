@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prettier and editorconfig setup
 - `@sdet-wcag-toolkit/core`: shared types, WCAG 2.2 A/AA catalog (55 criteria),
   severity weights with A-F grading, and per-finding priority scoring
+- `@sdet-wcag-toolkit/static-analyzer`: orchestrator plus four analyzers -
+  semantic structure, ARIA patterns, keyboard interaction, and color contrast
+- File-system source loader and `createDefaultOrchestrator` convenience factory
 
 ## [0.1.0] - TBD
 

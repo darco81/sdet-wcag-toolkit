@@ -12,3 +12,4 @@ export {
   AA_NORMAL_MIN_RATIO,
   contrastAnalyzer,
 } from './analyzers/contrast.js';
+export { createDefaultOrchestrator } from './default.js';
