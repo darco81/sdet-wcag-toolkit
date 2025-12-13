@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Demo Store</h1>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/about.html">About</a></li>
+      <div>Contact</div>
+    </ul>
+  </nav>
+
+  <section>
+    <h3>Featured product</h3>
+
+    <img src="/assets/hero.jpg">
+
+    <p class="price">$39.99</p>
+    <p class="fine-print">Taxes and shipping calculated at checkout.</p>
+
+    <div onclick="addToCart()" class="cta">
+      Add to cart
+    </div>
+
+    <button aria-hidden="true">Quick view</button>
+  </section>
+
+  <section>
+    <h2>Why choose us</h2>
+    <table>
+      <tr><td>Free shipping</td><td>Over $50</td></tr>
+      <tr><td>Returns</td><td>30 days</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    <p style="color: #aaa; background: #fff;">&copy; 2025 Demo Store</p>
+  </footer>
+</body>
+</html>

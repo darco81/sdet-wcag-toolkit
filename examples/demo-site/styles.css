@@ -1,0 +1,27 @@
+/* Intentionally poor contrast choices - the analyzer should flag these. */
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  color: #333;
+  background-color: #ffffff;
+}
+
+.fine-print {
+  color: #bbbbbb;
+  background-color: #ffffff;
+  font-size: 0.8rem;
+}
+
+.price {
+  color: #9a9a9a;
+  background: #ffffff;
+  font-size: 1.25rem;
+}
+
+.cta {
+  color: #ffffff;
+  background-color: #ffd966;
+  padding: 12px 24px;
+  cursor: pointer;
+}
