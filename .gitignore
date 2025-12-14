@@ -48,3 +48,7 @@ playwright/.cache/
 # Local planning / scratch (not committed)
 .planning/
 .remember/
+
+# Override global .claude/ ignore - we ship Claude Code agents/skills/commands
+# as part of the toolkit and want them tracked in this repo.
+!.claude/
