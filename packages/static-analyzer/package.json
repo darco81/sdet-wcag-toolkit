@@ -1,6 +1,6 @@
 {
   "name": "@sdet-wcag-toolkit/static-analyzer",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Static analysis of source code for WCAG 2.2 AA issues",
   "license": "AGPL-3.0-or-later",
   "type": "module",
