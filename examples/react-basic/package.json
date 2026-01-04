@@ -1,0 +1,7 @@
+{
+  "name": "wcag-react-basic-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React JSX fixture with intentional WCAG violations - target for the Model C AI agent path.",
+  "type": "module"
+}
