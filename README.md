@@ -2,13 +2,24 @@
 
 WCAG 2.2 AA accessibility toolkit for modern web applications.
 
-> **Status:** v0.1.0 - static analysis. Dynamic testing and reporting land
-> in v0.2.
+> **Status:** v0.1.1 - static analysis with two complementary paths
+> (deterministic TS analyzer + AI specialist agents). Dynamic testing
+> lands in v0.2.
 
-## What it does today
+## Two analysis paths
 
-Audits a directory of HTML and CSS source against WCAG 2.2 Level A and AA,
-across four analyzers:
+- **AI specialist agents (main path).** Four agents dispatched by
+  `wcag-lead` read your source (JSX, Vue SFC, Angular templates,
+  Svelte, Astro, HTML) with `Read` / `Grep` / `Glob` and find WCAG
+  issues framework-aware. Use inside Claude Code.
+- **Deterministic TypeScript analyzer.** The `wcag-toolkit audit` CLI
+  parses plain HTML and CSS with rule-based checks. Use for CI, or for
+  a project's built output. Zero LLM calls.
+
+Both emit the same `WcagFinding` shape. You can run either or both and
+merge the findings.
+
+## What gets checked (WCAG 2.2 A/AA)
 
 - **Semantic structure** - title, landmarks, heading order, lists, tables,
   image alt text, `html[lang]`.
@@ -20,9 +31,10 @@ across four analyzers:
 - **Color contrast** - CSS rules and inline styles where both foreground
   and background are statically resolvable.
 
-It skips things it can't honestly answer statically (JSX semantics,
-runtime focus order, `var(--…)` token resolution). Those are the target of
-v0.2 dynamic testing with Playwright + axe-core.
+It skips things it can't honestly answer statically (runtime focus order,
+hover-state contrast, `var(--…)` token resolution the AI path cannot
+resolve either). Those are the target of v0.2 dynamic testing with
+Playwright + axe-core.
 
 ## Install and run
 
@@ -56,8 +68,12 @@ to see what the output looks like without bringing your own project.
 If you use [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/claude-code/overview):
 
 - `/wcag:audit:static <path>` - orchestrates the audit through `wcag-lead`
-  and four specialist agents, and shows you a summarized report.
-- Skills and agents live under `.claude/` and are loaded automatically.
+  and four specialist sub-agents. Each one reads source and reasons about
+  it; the lead merges the findings and shows you a prioritized report.
+- `/wcag:init <path>` - copy the agents, skills, and commands into another
+  project's `.claude/` directory (or use `wcag-toolkit init <path>` from
+  the CLI).
+- Everything Claude Code needs lives under `.claude/` and loads automatically.
 
 ## Monorepo layout
 

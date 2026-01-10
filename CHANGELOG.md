@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes yet._
 
+## [0.1.1] - 2026-04-20
+
+### Changed
+
+- **Pivot from Model A to Model C.** Specialist agents were thin wrappers
+  over the TypeScript analyzer (which only parses HTML/CSS). Rewrote the
+  four specialists to read source directly via `Read` / `Grep` / `Glob`,
+  understand JSX, Vue SFC, Angular templates, Svelte, and Astro, and emit
+  `WcagFinding` JSON. `wcag-lead` now dispatches them in parallel via the
+  `Task` tool. The TypeScript analyzer stays as the deterministic CI path.
+
+### Added
+
+- `wcag-toolkit init [path]` - copies `.claude/` agents, skills, and
+  commands into a target project.
+- `/wcag:init` slash command.
+- `examples/react-basic/` - JSX fixture with 14+ intentional issues
+  demonstrating both analysis paths.
+
+### Notes
+
+See `docs/sprints/v0.1-sprint-report.md` section "Pivot mid-sprint: Model
+A → Model C" for the full story. Planned case study material.
+
 ## [0.1.0] - 2026-02-21
 
 ### Added
