@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes yet._
 
-## [0.1.1] - 2026-04-20
+## [0.1.1] - 2026-01-10
 
 ### Changed
 
@@ -33,7 +33,7 @@ _No unreleased changes yet._
 See `docs/sprints/v0.1-sprint-report.md` section "Pivot mid-sprint: Model
 A → Model C" for the full story. Planned case study material.
 
-## [0.1.0] - 2026-02-21
+## [0.1.0] - 2025-12-20
 
 ### Added
 
