@@ -5,3 +5,4 @@ export type {
   DynamicTarget,
   RunnerContext,
 } from './types.js';
+export { BrowserManager } from './browser-manager.js';
