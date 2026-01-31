@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@sdet-wcag-toolkit/core": "workspace:*",
+    "@sdet-wcag-toolkit/dynamic-tester": "workspace:*",
     "@sdet-wcag-toolkit/static-analyzer": "workspace:*",
     "chalk": "^5.3.0",
     "commander": "^12.1.0"

@@ -22,6 +22,9 @@ importers:
       '@sdet-wcag-toolkit/core':
         specifier: workspace:*
         version: link:../core
+      '@sdet-wcag-toolkit/dynamic-tester':
+        specifier: workspace:*
+        version: link:../dynamic-tester
       '@sdet-wcag-toolkit/static-analyzer':
         specifier: workspace:*
         version: link:../static-analyzer
