@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes yet._
 
+## [0.2.0] - 2026-02-28
+
+**Last public release.** v0.3+ (self-fix SDET agent) is a commercial
+offering. See `README.md` § Commercial engagement.
+
+### Added
+
+- `@sdet-wcag-toolkit/dynamic-tester` - Playwright + axe-core +
+  keyboard-flow + focus-visibility runners, plus
+  `DynamicTesterOrchestrator`.
+- `@sdet-wcag-toolkit/reporter` - markdown generators for developer and
+  executive audiences (`formatDevReport`, `formatExecSummary`).
+- CLI: `audit --url <url>` for dynamic runs, combined `audit <path>
+  --url <url>` mode, `--wait-for <selector>`, `report` command.
+- 7 Claude Code agents (forms-accessibility, wcag-dynamic-lead, axe-
+  runner-agent, keyboard-flow-agent, focus-visibility-agent, dev-
+  report-agent, exec-summary-agent).
+- 2 skills (`wcag-dynamic-test`, `wcag-report`), 3 commands
+  (`/wcag:audit:dynamic`, `/wcag:audit` full, `/wcag:report`).
+- `docs/WCAG-COVERAGE.md` - SC-by-SC coverage matrix with honest manual
+  column.
+- `docs/sprints/v0.2-sprint-report.md`.
+
+### Changed
+
+- README restructured around v0.2 scope and the commercial gate.
+- `wcag-toolkit` CLI bumped to 0.2.0; all workspace packages to 0.2.0.
+
 ## [0.1.1] - 2026-01-10
 
 ### Changed

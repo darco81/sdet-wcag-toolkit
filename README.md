@@ -2,39 +2,39 @@
 
 WCAG 2.2 AA accessibility toolkit for modern web applications.
 
-> **Status:** v0.1.1 - static analysis with two complementary paths
-> (deterministic TS analyzer + AI specialist agents). Dynamic testing
-> lands in v0.2.
+> **Status:** v0.2.0 - **last public release.** Static + dynamic
+> analysis, markdown reports, Claude Code integration. Self-fix (v0.3+)
+> is a commercial offering; see "Commercial engagement" below.
 
-## Two analysis paths
+## What it does
 
-- **AI specialist agents (main path).** Four agents dispatched by
-  `wcag-lead` read your source (JSX, Vue SFC, Angular templates,
-  Svelte, Astro, HTML) with `Read` / `Grep` / `Glob` and find WCAG
-  issues framework-aware. Use inside Claude Code.
-- **Deterministic TypeScript analyzer.** The `wcag-toolkit audit` CLI
-  parses plain HTML and CSS with rule-based checks. Use for CI, or for
-  a project's built output. Zero LLM calls.
+Audits a project against WCAG 2.2 Level A and AA across two paths:
 
-Both emit the same `WcagFinding` shape. You can run either or both and
-merge the findings.
+- **Static** - TypeScript rule-based analyzer for plain HTML/CSS (CI-
+  friendly, zero LLM calls) + AI specialist agents that read JSX, Vue,
+  Angular, Svelte, and Astro source directly.
+- **Dynamic** - Playwright + axe-core runner for issues that only
+  surface at runtime: rendered-DOM ARIA, keyboard traps, focus
+  indicators, contrast computed against actual styles.
 
-## What gets checked (WCAG 2.2 A/AA)
+Both paths emit the same `WcagFinding` shape and can be merged into a
+single report.
 
-- **Semantic structure** - title, landmarks, heading order, lists, tables,
-  image alt text, `html[lang]`.
-- **ARIA patterns** - invalid roles, missing required state attributes,
-  dangling `aria-labelledby` / `aria-describedby`, `aria-hidden` on
-  focusable elements, redundant roles.
-- **Keyboard interaction** - positive `tabindex`, interactive roles on
-  non-focusable elements, click handlers without a keyboard equivalent.
-- **Color contrast** - CSS rules and inline styles where both foreground
-  and background are statically resolvable.
+## Five specialists (static) + three runners (dynamic)
 
-It skips things it can't honestly answer statically (runtime focus order,
-hover-state contrast, `var(--…)` token resolution the AI path cannot
-resolve either). Those are the target of v0.2 dynamic testing with
-Playwright + axe-core.
+| Layer | Unit | Covers |
+|-------|------|--------|
+| Static | semantic-structure | Title, landmarks, heading order, lists, tables, alt |
+| Static | aria-patterns | Invalid roles, required attrs, id refs, aria-hidden on focusables |
+| Static | keyboard-interaction | Positive tabindex, unfocusable roles, click without keys |
+| Static | color-contrast | CSS + inline styles where both fg+bg are resolvable |
+| Static | forms-accessibility | Labels, error association, autocomplete, required signalling |
+| Dynamic | axe-runner | All WCAG 2.0/2.1/2.2 A+AA rules axe covers |
+| Dynamic | keyboard-flow | Tab cycle sanity, keyboard traps, Escape on dialog |
+| Dynamic | focus-visibility | Visible focus indicator per focusable element |
+
+See [docs/WCAG-COVERAGE.md](./docs/WCAG-COVERAGE.md) for the full
+success-criterion-by-criterion matrix and honest "manual only" list.
 
 ## Install and run
 
@@ -44,67 +44,96 @@ cd sdet-wcag-toolkit
 pnpm install
 pnpm -r build
 
-# Run the audit
-node packages/cli/dist/bin/wcag-toolkit.js audit examples/demo-site
+# Static audit on a source tree
+node packages/cli/dist/bin/wcag-toolkit.js audit examples/react-basic
 
-# JSON output for pipelines
-node packages/cli/dist/bin/wcag-toolkit.js audit examples/demo-site --json > findings.json
+# Dynamic audit on a URL
+node packages/cli/dist/bin/wcag-toolkit.js audit --url https://example.com
 
-# Show more findings in the console
-node packages/cli/dist/bin/wcag-toolkit.js audit ./src --top 25
+# Both - merges findings across paths
+node packages/cli/dist/bin/wcag-toolkit.js audit ./src --url http://localhost:3000
+
+# Reports - dev long-form or one-page exec summary
+node packages/cli/dist/bin/wcag-toolkit.js audit ./src --json > findings.json
+node packages/cli/dist/bin/wcag-toolkit.js report --from findings.json --format dev --output audit.md
+node packages/cli/dist/bin/wcag-toolkit.js report --from findings.json --format exec --target "MyApp" --output summary.md
 ```
 
 CI-friendly: the process exits non-zero when any Critical or Serious
 finding is present.
 
-## Demo
-
-`examples/demo-site/` contains a small static site with 15 intentional
-violations spanning all four analyzers. Use it to smoke-test changes or
-to see what the output looks like without bringing your own project.
-
 ## Claude Code integration
 
 If you use [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/claude-code/overview):
 
-- `/wcag:audit:static <path>` - orchestrates the audit through `wcag-lead`
-  and four specialist sub-agents. Each one reads source and reasons about
-  it; the lead merges the findings and shows you a prioritized report.
-- `/wcag:init <path>` - copy the agents, skills, and commands into another
-  project's `.claude/` directory (or use `wcag-toolkit init <path>` from
-  the CLI).
-- Everything Claude Code needs lives under `.claude/` and loads automatically.
+- `/wcag:audit:static <path>` - AI agents read your source and find WCAG
+  issues framework-aware (React, Vue, Angular, Svelte, Astro, HTML).
+- `/wcag:audit:dynamic <url>` - Playwright + axe-core against a live site.
+- `/wcag:audit <path> --url <url>` - full pipeline, both paths merged.
+- `/wcag:report <findings.json>` - markdown report (dev or exec format).
+- `/wcag:init <path>` - copy agents, skills, and commands into another
+  project's `.claude/`.
+
+## Demo fixtures
+
+- `examples/demo-site/` - plain HTML/CSS with 15 intentional violations.
+- `examples/react-basic/` - JSX components showcasing both analysis
+  paths side by side.
 
 ## Monorepo layout
 
 ```
 packages/
 ├── core/             shared types, WCAG 2.2 catalog, scoring
-├── static-analyzer/  four analyzers + orchestrator + source loader
+├── static-analyzer/  five specialists + orchestrator + source loader
+├── dynamic-tester/   Playwright + axe-core + keyboard-flow + focus-visibility
+├── reporter/         dev + exec markdown generators
 └── cli/              wcag-toolkit binary
-examples/
-└── demo-site/        fixture with intentional violations
 .claude/
-├── agents/           5 agents (lead + 4 specialists)
-├── skills/           wcag-static-analyze
-└── commands/         /wcag:audit:static
+├── agents/           12 agents (2 leads + 5 static + 3 dynamic + 2 report)
+├── skills/           wcag-static-analyze, wcag-dynamic-test, wcag-report
+└── commands/         /wcag:audit[:static|:dynamic], /wcag:report, /wcag:init
+examples/
+├── demo-site/        HTML fixture
+└── react-basic/      JSX fixture
 docs/
 ├── ARCHITECTURE.md
 ├── CONTRIBUTING.md
-└── sprints/
+├── WCAG-COVERAGE.md
+└── sprints/          per-release retrospective reports
 ```
 
 ## Versioning
 
-- `v0.1` - static analysis (this release).
-- `v0.2` - static + dynamic (Playwright + axe-core) + markdown reports.
-  **Planned last public release.**
-- `v0.3+` - self-fix SDET agent with AST patching. Private; available as
-  a commercial engagement.
+| Version | Scope | Status |
+|---------|-------|--------|
+| v0.1 | Static analysis (TS + AI agents) | Released |
+| **v0.2** | + Dynamic (Playwright + axe-core) + reports | **This release - last public.** |
+| v0.3 | Self-fix SDET agent (AST patching + verifier loop) | Private; commercial offering |
+| v0.4+ | Multi-runtime AI agents (OpenCode, API, local LLM) | Planned |
+
+## Commercial engagement
+
+v0.2.0 is the **last public release**. The next step - an agent that
+takes an audit and produces accessible code (AST patches, PRs, verifier
+loop against the same audit pipeline) - is delivered as a service, not
+an open-source release. It runs the full audit + fix cycle against
+production codebases, integrated with the client's CI and issue tracker.
+
+If you're auditing or building a product at scale and want the remediation
+loop on top of what this repo provides, get in touch via **sdet.it/services**.
+
+| What's public (this repo) | What's commercial |
+|---------------------------|-------------------|
+| Static source analysis | Auto-fix (AST patches) |
+| Dynamic browser testing | Verifier loop (re-audit after each fix) |
+| Dev + exec reports | Multi-tenant dashboard |
+| Claude Code integration | Jira / Linear integration |
+| AGPL-3.0 license | Commercial license |
 
 ## License
 
 AGPL-3.0-or-later - see [LICENSE](./LICENSE).
 
-If you need a different license (commercial, proprietary integration), get
-in touch.
+If AGPL is a blocker for your deployment, commercial licensing is
+available on request.
