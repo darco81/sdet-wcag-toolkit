@@ -16,3 +16,10 @@ export {
   isDeniedTool,
   sanitizeAgentTools,
 } from './guard.js';
+export type { SpecialistAgentId } from './prompts-index.js';
+export {
+  PROMPT_INDEX,
+  SPECIALIST_AGENT_IDS,
+  loadAllSystemPrompts,
+  loadSystemPrompt,
+} from './prompts-index.js';
