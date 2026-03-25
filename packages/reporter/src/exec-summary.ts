@@ -6,8 +6,9 @@
  */
 
 import {
+  PENALTY_WEIGHT,
   countBySeverity,
-  gradeWithCriticalPenalty,
+  scoreAndGrade,
   sortByPriority,
   type WcagFinding,
   type WcagGrade,
@@ -30,12 +31,22 @@ export function formatExecSummary(
   const topN = options.topRiskCount ?? 5;
 
   const breakdown = countBySeverity(findings);
-  const grade = gradeWithCriticalPenalty(findings);
+  const { score, grade } = scoreAndGrade(findings);
 
   const lines: string[] = [];
   lines.push(`# ${title}`);
   lines.push('');
   lines.push(headlineSentence(grade, breakdown.total, target));
+  lines.push('');
+  lines.push(`## Score: ${score} (Grade ${grade})`);
+  lines.push('');
+  lines.push('Severity breakdown:');
+  if (breakdown.critical > 0) lines.push(`- ${breakdown.critical} critical (-${breakdown.critical * PENALTY_WEIGHT.critical})`);
+  if (breakdown.serious > 0) lines.push(`- ${breakdown.serious} serious (-${breakdown.serious * PENALTY_WEIGHT.serious})`);
+  if (breakdown.moderate > 0) lines.push(`- ${breakdown.moderate} moderate (-${breakdown.moderate * PENALTY_WEIGHT.moderate})`);
+  if (breakdown.minor > 0) lines.push(`- ${breakdown.minor} minor (-${breakdown.minor * PENALTY_WEIGHT.minor})`);
+  if (breakdown.total === 0) lines.push('- (none - perfect score)');
+
   lines.push('');
   lines.push('## What we found');
   lines.push('');

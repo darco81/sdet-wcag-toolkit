@@ -12,7 +12,7 @@
 
 import {
   countBySeverity,
-  gradeWithCriticalPenalty,
+  scoreAndGrade,
   sortByPriority,
   type SeverityBreakdown,
   type WcagFinding,
@@ -35,18 +35,22 @@ export function formatDevReport(
   const top = options.topCount ?? 10;
 
   const breakdown = countBySeverity(findings);
-  const grade = gradeWithCriticalPenalty(findings);
+  const { score, grade } = scoreAndGrade(findings);
 
   const lines: string[] = [];
   lines.push(`# ${title}`);
   lines.push('');
-  lines.push(`**Grade:** ${grade} · **Findings:** ${breakdown.total}`);
+  lines.push(`**Score:** ${score} · **Grade:** ${grade} · **Findings:** ${breakdown.total}`);
   lines.push('');
   lines.push(renderSeverityTable(breakdown));
 
   if (findings.length === 0) {
     lines.push('');
     lines.push('_No findings. Clean audit._');
+    lines.push('');
+    lines.push('## Positive findings');
+    lines.push('');
+    lines.push('_(reserved for v0.4+ - surface what the audit confirmed is working)_');
     return lines.join('\n') + '\n';
   }
 
@@ -69,6 +73,11 @@ export function formatDevReport(
       lines.push('');
     }
   }
+
+  lines.push('');
+  lines.push('## Positive findings');
+  lines.push('');
+  lines.push('_(reserved for v0.4+ - surface what the audit confirmed is working)_');
 
   return lines.join('\n') + '\n';
 }

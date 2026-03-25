@@ -27,7 +27,25 @@ describe('formatDevReport', () => {
   it('renders a clean pass message with grade A when there are no findings', () => {
     const out = formatDevReport([]);
     expect(out).toContain('**Grade:** A');
+    expect(out).toContain('**Score:** 100');
     expect(out).toContain('No findings');
+  });
+
+  it('shows the v0.3 score and grade in the header', () => {
+    const out = formatDevReport([
+      finding('serious', '1.4.3', 'r1'),
+      finding('serious', '1.4.3', 'r2'),
+    ]);
+    // 2 serious × 10 penalty = 80 → Grade B
+    expect(out).toContain('**Score:** 80');
+    expect(out).toContain('**Grade:** B');
+  });
+
+  it('reserves a Positive findings section', () => {
+    const cleanOut = formatDevReport([]);
+    expect(cleanOut).toContain('## Positive findings');
+    const dirtyOut = formatDevReport([finding('serious', '1.4.3', 'r')]);
+    expect(dirtyOut).toContain('## Positive findings');
   });
 
   it('shows the severity breakdown table', () => {

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  PENALTY_WEIGHT,
   SEVERITY_WEIGHT,
+  aggregatePenaltyScore,
   aggregateScore,
   countBySeverity,
   gradeFor,
+  gradeFromPenaltyScore,
   gradeWithCriticalPenalty,
+  scoreAndGrade,
 } from './severity.js';
 import type { WcagFinding, WcagSeverity } from './types.js';
 import { requireSuccessCriterion } from './wcag-catalog.js';
@@ -110,5 +114,81 @@ describe('gradeWithCriticalPenalty', () => {
   it('leaves an F grade as F even with criticals', () => {
     const findings = Array.from({ length: 20 }, (_, i) => finding('critical', i));
     expect(gradeWithCriticalPenalty(findings)).toBe('F');
+  });
+});
+
+describe('PENALTY_WEIGHT', () => {
+  it('matches the v0.3 lead-orchestrator rubric', () => {
+    expect(PENALTY_WEIGHT.critical).toBe(15);
+    expect(PENALTY_WEIGHT.serious).toBe(10);
+    expect(PENALTY_WEIGHT.moderate).toBe(5);
+    expect(PENALTY_WEIGHT.minor).toBe(2);
+  });
+});
+
+describe('aggregatePenaltyScore', () => {
+  it('returns 100 for a clean audit', () => {
+    expect(aggregatePenaltyScore([])).toBe(100);
+  });
+
+  it('subtracts severity-weighted penalties from 100', () => {
+    expect(aggregatePenaltyScore([finding('critical')])).toBe(85);
+    expect(aggregatePenaltyScore([finding('serious')])).toBe(90);
+    expect(aggregatePenaltyScore([finding('moderate')])).toBe(95);
+    expect(aggregatePenaltyScore([finding('minor')])).toBe(98);
+  });
+
+  it('combines penalties additively', () => {
+    const findings = [finding('critical'), finding('serious'), finding('moderate')];
+    // 100 - 15 - 10 - 5 = 70
+    expect(aggregatePenaltyScore(findings)).toBe(70);
+  });
+
+  it('floors the score at 0 (never negative)', () => {
+    const findings = Array.from({ length: 20 }, (_, i) => finding('critical', i));
+    expect(aggregatePenaltyScore(findings)).toBe(0);
+  });
+});
+
+describe('gradeFromPenaltyScore', () => {
+  it('A for 90+', () => {
+    expect(gradeFromPenaltyScore(100)).toBe('A');
+    expect(gradeFromPenaltyScore(95)).toBe('A');
+    expect(gradeFromPenaltyScore(90)).toBe('A');
+  });
+
+  it('B for 75-89', () => {
+    expect(gradeFromPenaltyScore(89)).toBe('B');
+    expect(gradeFromPenaltyScore(80)).toBe('B');
+    expect(gradeFromPenaltyScore(75)).toBe('B');
+  });
+
+  it('C for 50-74', () => {
+    expect(gradeFromPenaltyScore(74)).toBe('C');
+    expect(gradeFromPenaltyScore(60)).toBe('C');
+    expect(gradeFromPenaltyScore(50)).toBe('C');
+  });
+
+  it('D for 25-49', () => {
+    expect(gradeFromPenaltyScore(49)).toBe('D');
+    expect(gradeFromPenaltyScore(30)).toBe('D');
+    expect(gradeFromPenaltyScore(25)).toBe('D');
+  });
+
+  it('F for below 25', () => {
+    expect(gradeFromPenaltyScore(24)).toBe('F');
+    expect(gradeFromPenaltyScore(10)).toBe('F');
+    expect(gradeFromPenaltyScore(0)).toBe('F');
+  });
+});
+
+describe('scoreAndGrade', () => {
+  it('returns score and grade together', () => {
+    const findings = [finding('serious')]; // penalty 10 → score 90 → A
+    expect(scoreAndGrade(findings)).toEqual({ score: 90, grade: 'A' });
+  });
+
+  it('returns 100/A for empty findings', () => {
+    expect(scoreAndGrade([])).toEqual({ score: 100, grade: 'A' });
   });
 });

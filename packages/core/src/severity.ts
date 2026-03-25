@@ -95,3 +95,66 @@ export function gradeWithCriticalPenalty(findings: readonly WcagFinding[]): Wcag
   if (base === 'A' || base === 'B' || base === 'C') return 'D';
   return base;
 }
+
+/**
+ * v0.3 client-facing penalty weights - one per severity tier. Subtracted
+ * from a perfect 100 to produce the dashboard "Score" number.
+ *
+ * Calibrated to match the Lead-orchestrator scoring rubric: a single
+ * Critical or two Serious findings is enough to leave Grade A.
+ */
+export const PENALTY_WEIGHT: Readonly<Record<WcagSeverity, number>> = {
+  critical: 15,
+  serious: 10,
+  moderate: 5,
+  minor: 2,
+};
+
+/**
+ * Compute the v0.3 score: 100 minus the sum of {@link PENALTY_WEIGHT}
+ * across all findings, floored at 0.
+ *
+ * Higher is better - opposite of {@link aggregateScore}. Reports the
+ * single number a non-technical stakeholder can read at a glance.
+ *
+ * @returns integer in [0, 100]
+ */
+export function aggregatePenaltyScore(findings: readonly WcagFinding[]): number {
+  let penalty = 0;
+  for (const f of findings) penalty += PENALTY_WEIGHT[f.severity];
+  return Math.max(0, 100 - penalty);
+}
+
+/** Grade band for the v0.3 100-point score. */
+const PENALTY_GRADE_BANDS: ReadonlyArray<{ grade: WcagGrade; minScore: number }> = [
+  { grade: 'A', minScore: 90 },
+  { grade: 'B', minScore: 75 },
+  { grade: 'C', minScore: 50 },
+  { grade: 'D', minScore: 25 },
+  { grade: 'F', minScore: 0 },
+];
+
+/**
+ * Grade band for the v0.3 100-point score:
+ *   A: 90 +
+ *   B: 75 - 89
+ *   C: 50 - 74
+ *   D: 25 - 49
+ *   F: < 25
+ */
+export function gradeFromPenaltyScore(score: number): WcagGrade {
+  for (const band of PENALTY_GRADE_BANDS) {
+    if (score >= band.minScore) return band.grade;
+  }
+  return 'F';
+}
+
+/**
+ * Convenience: compute the score and the grade in one call.
+ */
+export function scoreAndGrade(
+  findings: readonly WcagFinding[],
+): { readonly score: number; readonly grade: WcagGrade } {
+  const score = aggregatePenaltyScore(findings);
+  return { score, grade: gradeFromPenaltyScore(score) };
+}

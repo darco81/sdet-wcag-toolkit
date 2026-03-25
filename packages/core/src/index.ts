@@ -16,11 +16,15 @@ export {
 
 export type { SeverityBreakdown, WcagGrade } from './severity.js';
 export {
+  PENALTY_WEIGHT,
   SEVERITY_WEIGHT,
+  aggregatePenaltyScore,
   aggregateScore,
   countBySeverity,
   gradeFor,
+  gradeFromPenaltyScore,
   gradeWithCriticalPenalty,
+  scoreAndGrade,
 } from './severity.js';
 
 export type { EffortFn, FixEffort } from './priority.js';
