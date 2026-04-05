@@ -76,6 +76,28 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.39)
 
+  packages/orchestrator:
+    dependencies:
+      '@sdet-wcag-toolkit/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sdet-wcag-toolkit/reporter':
+        specifier: workspace:*
+        version: link:../reporter
+      '@sdet-wcag-toolkit/runtime-core':
+        specifier: workspace:*
+        version: link:../runtime-core
+    devDependencies:
+      '@types/node':
+        specifier: ^20.16.0
+        version: 20.19.39
+      '@vitest/coverage-v8':
+        specifier: ^2.1.4
+        version: 2.1.9(vitest@2.1.9(@types/node@20.19.39))
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.39)
+
   packages/reporter:
     dependencies:
       '@sdet-wcag-toolkit/core':
