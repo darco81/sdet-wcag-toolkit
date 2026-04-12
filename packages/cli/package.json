@@ -1,6 +1,6 @@
 {
   "name": "@sdet-wcag-toolkit/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Command-line interface for sdet-wcag-toolkit",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -17,7 +17,10 @@
   "dependencies": {
     "@sdet-wcag-toolkit/core": "workspace:*",
     "@sdet-wcag-toolkit/dynamic-tester": "workspace:*",
+    "@sdet-wcag-toolkit/orchestrator": "workspace:*",
     "@sdet-wcag-toolkit/reporter": "workspace:*",
+    "@sdet-wcag-toolkit/runtime-claude-code": "workspace:*",
+    "@sdet-wcag-toolkit/runtime-core": "workspace:*",
     "@sdet-wcag-toolkit/static-analyzer": "workspace:*",
     "chalk": "^5.3.0",
     "commander": "^12.1.0"

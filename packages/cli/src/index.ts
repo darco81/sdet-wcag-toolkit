@@ -9,7 +9,7 @@ export function buildProgram(): Command {
   program
     .name('wcag-toolkit')
     .description('WCAG 2.2 AA accessibility toolkit CLI')
-    .version('0.2.0');
+    .version('0.3.0');
   registerAuditCommand(program);
   registerInitCommand(program);
   registerReportCommand(program);

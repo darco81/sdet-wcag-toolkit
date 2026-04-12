@@ -1,12 +1,14 @@
 /**
- * `audit` command. Three modes:
- *   - Static only: `wcag-toolkit audit ./src`
- *   - Dynamic only: `wcag-toolkit audit --url https://example.com`
- *   - Both:        `wcag-toolkit audit ./src --url https://example.com`
+ * `audit` command. Modes:
+ *   - Static only:    `wcag-toolkit audit ./src`
+ *   - Dynamic only:   `wcag-toolkit audit --url https://example.com`
+ *   - Static+dynamic: `wcag-toolkit audit ./src --url https://example.com`
+ *   - + AI agents:    add `--use-ai` to dispatch the 5 specialist
+ *                     agents through Claude Code's Task tool. Requires
+ *                     a CC session (run via /wcag:audit skill or from
+ *                     inside `claude` REPL).
  *
- * Dynamic mode navigates to the URL with Playwright and runs axe +
- * keyboard-flow + focus-visibility against the rendered page. Both
- * modes share the same WcagFinding shape and dedupe across paths.
+ * `--use-ai` is opt-in to preserve v0.2 behavior for CI usage.
  */
 
 import { resolve } from 'node:path';
@@ -16,6 +18,8 @@ import { Command } from 'commander';
 
 import type { WcagFinding } from '@sdet-wcag-toolkit/core';
 import { createDefaultDynamicOrchestrator } from '@sdet-wcag-toolkit/dynamic-tester';
+import { LeadOrchestrator } from '@sdet-wcag-toolkit/orchestrator';
+import { ClaudeCodeRuntime } from '@sdet-wcag-toolkit/runtime-claude-code';
 import { createDefaultOrchestrator, loadSources } from '@sdet-wcag-toolkit/static-analyzer';
 
 import { formatConsoleReport } from '../reporters/console.js';
@@ -25,6 +29,7 @@ export interface AuditOptions {
   readonly json: boolean;
   readonly top: string;
   readonly waitFor?: string;
+  readonly useAi: boolean;
 }
 
 export function registerAuditCommand(program: Command): Command {
@@ -39,6 +44,11 @@ export function registerAuditCommand(program: Command): Command {
     )
     .option('--json', 'Emit findings as JSON to stdout', false)
     .option('--top <n>', 'How many top-priority findings to show in console output', '10')
+    .option(
+      '--use-ai',
+      'Dispatch the 5 WCAG specialist agents through Claude Code (requires a CC session)',
+      false,
+    )
     .action(async (pathArg: string | undefined, options: AuditOptions) => {
       await runAudit(pathArg, options);
     });
@@ -48,6 +58,12 @@ export async function runAudit(
   pathArg: string | undefined,
   options: AuditOptions,
 ): Promise<void> {
+  if (options.useAi && !pathArg) {
+    throw new Error(
+      'AI agents require a source path. Pass a directory along with --use-ai.',
+    );
+  }
+
   if (!pathArg && !options.url) {
     throw new Error('Provide a path argument, a --url, or both.');
   }
@@ -59,6 +75,30 @@ export async function runAudit(
     const context = await loadSources({ rootDir });
     const staticFindings = createDefaultOrchestrator().run(context);
     findings.push(...staticFindings);
+
+    if (options.useAi) {
+      try {
+        const lead = new LeadOrchestrator(new ClaudeCodeRuntime());
+        const aiResult = await lead.run(rootDir);
+        findings.push(...aiResult.findings);
+        if (aiResult.agentErrors.length > 0 && !options.json) {
+          for (const err of aiResult.agentErrors) {
+            console.error(
+              chalk.yellow(
+                `! agent ${err.agentId} returned ${err.messages.length} error(s); findings from other agents kept.`,
+              ),
+            );
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `--use-ai failed: ${message}\n` +
+            'AI specialists require a Claude Code session. Run via the ' +
+            '/wcag:audit skill, or omit --use-ai for static + dynamic only.',
+        );
+      }
+    }
   }
 
   if (options.url) {
@@ -84,7 +124,6 @@ export async function runAudit(
   if (deduped.some((f) => f.severity === 'critical' || f.severity === 'serious')) {
     process.exitCode = 1;
   } else if (!pathArg && options.url) {
-    // Purely cosmetic hint - the user explicitly asked for a dynamic run.
     console.log(chalk.dim('\n(Dynamic audit complete.)'));
   }
 }
