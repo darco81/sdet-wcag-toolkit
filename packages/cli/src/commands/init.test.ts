@@ -28,6 +28,11 @@ describe('wcag-toolkit init', () => {
     expect(existsSync(join(target, '.claude', 'skills', 'wcag-static-analyze', 'SKILL.md'))).toBe(true);
     expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'audit', 'static.md'))).toBe(true);
     expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'init.md'))).toBe(true);
+    // v0.3 skills + slash commands
+    expect(existsSync(join(target, '.claude', 'skills', 'wcag-audit', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(target, '.claude', 'skills', 'wcag-fix', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'audit.md'))).toBe(true);
+    expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'fix.md'))).toBe(true);
   });
 
   it('skips files that already exist when --force is not set', async () => {
