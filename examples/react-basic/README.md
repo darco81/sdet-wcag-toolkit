@@ -1,7 +1,21 @@
 # react-basic
 
 A minimal React fixture seeded with WCAG 2.2 AA violations. It exists to
-demonstrate the **two analysis paths** this toolkit offers:
+demonstrate the **three analysis paths** this toolkit offers:
+
+## Try with --use-ai (v0.3 default)
+
+In a Claude Code session, run the new graded audit:
+
+```bash
+node packages/cli/dist/bin/wcag-toolkit.js audit examples/react-basic --use-ai
+```
+
+This dispatches the 5 AI specialists in parallel through CC's Task
+tool, merges with the deterministic TS analyzer, and prints a report
+with **Score** (0-100) and **Grade** (A-F). On this fixture the
+expected outcome is a low D / F because the seeded violations are
+deliberately material.
 
 ## Path A - CLI on built output (deterministic)
 
