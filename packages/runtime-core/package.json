@@ -16,7 +16,10 @@
       "default": "./dist/prompts-index.js"
     }
   },
-  "files": ["dist", "src/prompts"],
+  "files": [
+    "dist",
+    "src/prompts"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && pnpm run copy-prompts",
     "copy-prompts": "mkdir -p dist/prompts && cp src/prompts/*.md dist/prompts/ 2>/dev/null || true",

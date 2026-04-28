@@ -54,7 +54,9 @@ export async function runInit(pathArg: string, options: InitOptions): Promise<vo
   console.log(`  source: ${chalk.dim(sourceDir)}`);
   console.log(`  target: ${chalk.dim(targetClaude)}`);
   console.log('');
-  console.log(`${chalk.green('✓')} copied ${summary.copied} file${summary.copied === 1 ? '' : 's'}`);
+  console.log(
+    `${chalk.green('✓')} copied ${summary.copied} file${summary.copied === 1 ? '' : 's'}`,
+  );
   if (summary.skipped > 0) {
     console.log(
       `${chalk.yellow('!')} skipped ${summary.skipped} (already exist - pass --force to overwrite)`,

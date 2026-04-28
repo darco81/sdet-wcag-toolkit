@@ -7,7 +7,9 @@
   "bin": {
     "wcag-toolkit": "./dist/bin/wcag-toolkit.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",

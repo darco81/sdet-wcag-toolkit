@@ -65,11 +65,7 @@ export class AxeRunner implements DynamicRunner {
   }
 }
 
-function mapViolation(
-  violation: Result,
-  node: NodeResult,
-  url: string,
-): WcagFinding | null {
+function mapViolation(violation: Result, node: NodeResult, url: string): WcagFinding | null {
   const sc = resolveSuccessCriterion(violation.tags);
   if (!sc) {
     return null;

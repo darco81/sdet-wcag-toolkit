@@ -64,9 +64,7 @@ describe('ClaudeCodeRuntime', () => {
   });
 
   it('returns empty findings with error entry when parsing fails', async () => {
-    const invoker = vi
-      .fn()
-      .mockResolvedValue({ text: '```json\nnot-json\n```', durationMs: 10 });
+    const invoker = vi.fn().mockResolvedValue({ text: '```json\nnot-json\n```', durationMs: 10 });
     const runtime = new ClaudeCodeRuntime({ taskInvoker: invoker });
     const result = await runtime.runAgent(baseSpec());
 

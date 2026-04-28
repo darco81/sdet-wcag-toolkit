@@ -23,10 +23,18 @@ describe('wcag-toolkit init', () => {
     expect(existsSync(join(target, '.claude', 'agents', 'wcag-lead.md'))).toBe(true);
     expect(existsSync(join(target, '.claude', 'agents', 'semantic-structure-agent.md'))).toBe(true);
     expect(existsSync(join(target, '.claude', 'agents', 'aria-patterns-agent.md'))).toBe(true);
-    expect(existsSync(join(target, '.claude', 'agents', 'keyboard-interaction-agent.md'))).toBe(true);
-    expect(existsSync(join(target, '.claude', 'agents', 'color-contrast-static-agent.md'))).toBe(true);
-    expect(existsSync(join(target, '.claude', 'skills', 'wcag-static-analyze', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'audit', 'static.md'))).toBe(true);
+    expect(existsSync(join(target, '.claude', 'agents', 'keyboard-interaction-agent.md'))).toBe(
+      true,
+    );
+    expect(existsSync(join(target, '.claude', 'agents', 'color-contrast-static-agent.md'))).toBe(
+      true,
+    );
+    expect(existsSync(join(target, '.claude', 'skills', 'wcag-static-analyze', 'SKILL.md'))).toBe(
+      true,
+    );
+    expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'audit', 'static.md'))).toBe(
+      true,
+    );
     expect(existsSync(join(target, '.claude', 'commands', 'wcag', 'init.md'))).toBe(true);
     // v0.3 skills + slash commands
     expect(existsSync(join(target, '.claude', 'skills', 'wcag-audit', 'SKILL.md'))).toBe(true);

@@ -20,12 +20,7 @@ describe('sanitizeAgentTools', () => {
   });
 
   it('drops denied tools silently by default', () => {
-    const result = sanitizeAgentTools([
-      tool('Read'),
-      tool('Bash'),
-      tool('Grep'),
-      tool('WebFetch'),
-    ]);
+    const result = sanitizeAgentTools([tool('Read'), tool('Bash'), tool('Grep'), tool('WebFetch')]);
     expect(result.map((t) => t.name)).toEqual(['Read', 'Grep']);
   });
 
@@ -35,15 +30,13 @@ describe('sanitizeAgentTools', () => {
   });
 
   it('throws in strict mode when a denied tool is present', () => {
-    expect(() =>
-      sanitizeAgentTools([tool('Read'), tool('Bash')], { strict: true }),
-    ).toThrow(/HardGuard.*Bash/);
+    expect(() => sanitizeAgentTools([tool('Read'), tool('Bash')], { strict: true })).toThrow(
+      /HardGuard.*Bash/,
+    );
   });
 
   it('does not throw in strict mode when only allowed tools are present', () => {
-    expect(() =>
-      sanitizeAgentTools([tool('Read'), tool('Grep')], { strict: true }),
-    ).not.toThrow();
+    expect(() => sanitizeAgentTools([tool('Read'), tool('Grep')], { strict: true })).not.toThrow();
   });
 
   it('returns empty array for empty input', () => {
@@ -51,12 +44,7 @@ describe('sanitizeAgentTools', () => {
   });
 
   it('preserves order of kept tools', () => {
-    const result = sanitizeAgentTools([
-      tool('Glob'),
-      tool('Bash'),
-      tool('Read'),
-      tool('Grep'),
-    ]);
+    const result = sanitizeAgentTools([tool('Glob'), tool('Bash'), tool('Read'), tool('Grep')]);
     expect(result.map((t) => t.name)).toEqual(['Glob', 'Read', 'Grep']);
   });
 });

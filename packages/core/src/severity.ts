@@ -152,9 +152,10 @@ export function gradeFromPenaltyScore(score: number): WcagGrade {
 /**
  * Convenience: compute the score and the grade in one call.
  */
-export function scoreAndGrade(
-  findings: readonly WcagFinding[],
-): { readonly score: number; readonly grade: WcagGrade } {
+export function scoreAndGrade(findings: readonly WcagFinding[]): {
+  readonly score: number;
+  readonly grade: WcagGrade;
+} {
   const score = aggregatePenaltyScore(findings);
   return { score, grade: gradeFromPenaltyScore(score) };
 }

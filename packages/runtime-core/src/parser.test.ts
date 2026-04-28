@@ -46,8 +46,7 @@ describe('parseAgentOutput', () => {
   });
 
   it('strips multiple <think> blocks', () => {
-    const raw =
-      '<think>first</think> some text <think>second</think>\n```json\n[]\n```';
+    const raw = '<think>first</think> some text <think>second</think>\n```json\n[]\n```';
     expect(parseAgentOutput(raw, 'a')).toEqual([]);
   });
 
@@ -60,16 +59,14 @@ describe('parseAgentOutput', () => {
   });
 
   it('throws ParseError when output is not an array or envelope', () => {
-    expect(() => parseAgentOutput('```json\n{"foo": 1}\n```', 'a')).toThrow(
-      /non-array/,
-    );
+    expect(() => parseAgentOutput('```json\n{"foo": 1}\n```', 'a')).toThrow(/non-array/);
   });
 
   it('throws ParseError when a finding is missing required fields', () => {
     const bad = [{ severity: 'serious' }];
-    expect(() =>
-      parseAgentOutput(`\`\`\`json\n${JSON.stringify(bad)}\n\`\`\``, 'a'),
-    ).toThrow(ParseError);
+    expect(() => parseAgentOutput(`\`\`\`json\n${JSON.stringify(bad)}\n\`\`\``, 'a')).toThrow(
+      ParseError,
+    );
   });
 
   it('skips findings whose success criterion is not in the catalog', () => {
@@ -80,9 +77,9 @@ describe('parseAgentOutput', () => {
 
   it('rejects unknown severity values', () => {
     const bogus = { ...VALID_FINDING, severity: 'show-stopper' };
-    expect(() =>
-      parseAgentOutput(`\`\`\`json\n${JSON.stringify([bogus])}\n\`\`\``, 'a'),
-    ).toThrow(ParseError);
+    expect(() => parseAgentOutput(`\`\`\`json\n${JSON.stringify([bogus])}\n\`\`\``, 'a')).toThrow(
+      ParseError,
+    );
   });
 
   it('preserves optional fields (rationale, remediation, helpUrl)', () => {
@@ -92,10 +89,7 @@ describe('parseAgentOutput', () => {
       remediation: 'add alt=""',
       helpUrl: 'https://www.w3.org/TR/WCAG22/#non-text-content',
     };
-    const findings = parseAgentOutput(
-      `\`\`\`json\n${JSON.stringify([rich])}\n\`\`\``,
-      'a',
-    );
+    const findings = parseAgentOutput(`\`\`\`json\n${JSON.stringify([rich])}\n\`\`\``, 'a');
     expect(findings[0]?.rationale).toBe('no alt text breaks SRs');
     expect(findings[0]?.remediation).toBe('add alt=""');
     expect(findings[0]?.helpUrl).toContain('w3.org');

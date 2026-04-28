@@ -185,15 +185,8 @@ describe('LeadOrchestrator.run', () => {
     const finding = fixtureFinding('a', 'r1', 'serious', '1.1.1', 'a.tsx', 1);
     const runtime = fakeRuntime({
       perAgent: {
-        'semantic-structure': makeAgentResult(
-          'semantic-structure',
-          [finding],
-          [],
-        ),
-        'aria-patterns': makeAgentResult('aria-patterns', [], [
-          'parsed nothing',
-          'JSON missing',
-        ]),
+        'semantic-structure': makeAgentResult('semantic-structure', [finding], []),
+        'aria-patterns': makeAgentResult('aria-patterns', [], ['parsed nothing', 'JSON missing']),
       },
     });
 

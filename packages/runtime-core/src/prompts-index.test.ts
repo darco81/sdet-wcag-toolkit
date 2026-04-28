@@ -19,9 +19,7 @@ describe('SPECIALIST_AGENT_IDS', () => {
   });
 
   it('keys of PROMPT_INDEX match SPECIALIST_AGENT_IDS', () => {
-    expect(Object.keys(PROMPT_INDEX).sort()).toEqual(
-      [...SPECIALIST_AGENT_IDS].sort(),
-    );
+    expect(Object.keys(PROMPT_INDEX).sort()).toEqual([...SPECIALIST_AGENT_IDS].sort());
   });
 });
 

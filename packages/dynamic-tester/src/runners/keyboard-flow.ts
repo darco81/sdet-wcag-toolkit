@@ -87,9 +87,7 @@ async function checkTabAdvances(page: Page, url: string): Promise<WcagFinding[]>
       // Focus rolled back to body - acceptable (end-of-page wrap) unless it
       // happens on the very first press, which would mean Tab is captured.
       if (step === 0) {
-        return [
-          tabNoOpFinding(url, 'Pressing Tab from body did not move focus to any element.'),
-        ];
+        return [tabNoOpFinding(url, 'Pressing Tab from body did not move focus to any element.')];
       }
       return [];
     }
@@ -153,13 +151,16 @@ async function checkEscapeClosesDialog(page: Page, url: string): Promise<WcagFin
   // Allow the page to settle.
   await page.waitForTimeout(150);
 
-  const stillOpen = await page.evaluate((tag: string) => {
-    const candidates = Array.from(document.querySelectorAll(tag));
-    return candidates.some((el) => {
-      const html = el as HTMLElement;
-      return html.offsetWidth > 0 && html.offsetHeight > 0;
-    });
-  }, dialogInfo.tag === 'dialog' ? 'dialog[open]' : '[role="dialog"][aria-modal="true"]');
+  const stillOpen = await page.evaluate(
+    (tag: string) => {
+      const candidates = Array.from(document.querySelectorAll(tag));
+      return candidates.some((el) => {
+        const html = el as HTMLElement;
+        return html.offsetWidth > 0 && html.offsetHeight > 0;
+      });
+    },
+    dialogInfo.tag === 'dialog' ? 'dialog[open]' : '[role="dialog"][aria-modal="true"]',
+  );
 
   if (!stillOpen) return [];
 

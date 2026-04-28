@@ -27,10 +27,7 @@ export function registerReportCommand(program: Command): Command {
   return program
     .command('report')
     .description('Generate a markdown report from a saved findings JSON file')
-    .requiredOption(
-      '--from <file>',
-      'Path to a JSON file produced by `wcag-toolkit audit --json`',
-    )
+    .requiredOption('--from <file>', 'Path to a JSON file produced by `wcag-toolkit audit --json`')
     .option('--format <format>', 'Report format: "dev" (default) or "exec"', 'dev')
     .option('--output <file>', 'Write markdown to a file instead of stdout')
     .option('--title <title>', 'Override the report title')

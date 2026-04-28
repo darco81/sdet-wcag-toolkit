@@ -46,13 +46,9 @@ export async function loadSystemPrompt(id: SpecialistAgentId): Promise<string> {
 }
 
 /** Load every specialist prompt at once. */
-export async function loadAllSystemPrompts(): Promise<
-  Record<SpecialistAgentId, string>
-> {
+export async function loadAllSystemPrompts(): Promise<Record<SpecialistAgentId, string>> {
   const entries = await Promise.all(
-    SPECIALIST_AGENT_IDS.map(
-      async (id) => [id, await loadSystemPrompt(id)] as const,
-    ),
+    SPECIALIST_AGENT_IDS.map(async (id) => [id, await loadSystemPrompt(id)] as const),
   );
   return Object.fromEntries(entries) as Record<SpecialistAgentId, string>;
 }

@@ -38,10 +38,7 @@ export function registerAuditCommand(program: Command): Command {
     .description('Run a WCAG 2.2 AA audit against a directory, a URL, or both')
     .argument('[path]', 'Directory to analyze (static path). Omit for URL-only audits.')
     .option('--url <url>', 'URL to audit dynamically with Playwright + axe-core')
-    .option(
-      '--wait-for <selector>',
-      'Wait for this CSS selector before running the dynamic audit',
-    )
+    .option('--wait-for <selector>', 'Wait for this CSS selector before running the dynamic audit')
     .option('--json', 'Emit findings as JSON to stdout', false)
     .option('--top <n>', 'How many top-priority findings to show in console output', '10')
     .option(
@@ -54,14 +51,9 @@ export function registerAuditCommand(program: Command): Command {
     });
 }
 
-export async function runAudit(
-  pathArg: string | undefined,
-  options: AuditOptions,
-): Promise<void> {
+export async function runAudit(pathArg: string | undefined, options: AuditOptions): Promise<void> {
   if (options.useAi && !pathArg) {
-    throw new Error(
-      'AI agents require a source path. Pass a directory along with --use-ai.',
-    );
+    throw new Error('AI agents require a source path. Pass a directory along with --use-ai.');
   }
 
   if (!pathArg && !options.url) {

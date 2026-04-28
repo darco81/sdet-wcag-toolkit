@@ -176,7 +176,8 @@ function checkTableStructure($: CheerioAPI, file: SourceFile): WcagFinding[] {
   $('table').each((_, table) => {
     const hasHeaders = $(table).find('th').length > 0;
     const hasCaption = $(table).find('caption').length > 0;
-    const isPresentational = $(table).attr('role') === 'presentation' || $(table).attr('role') === 'none';
+    const isPresentational =
+      $(table).attr('role') === 'presentation' || $(table).attr('role') === 'none';
     if (isPresentational || hasHeaders) return;
     findings.push(
       createFinding({

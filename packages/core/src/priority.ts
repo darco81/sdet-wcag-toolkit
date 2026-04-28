@@ -47,7 +47,7 @@ export const DEFAULT_RULE_EFFORT: Readonly<Record<string, FixEffort>> = {
   'landmark-main': 4,
   'focus-not-obscured': 4,
   // Design/product decisions
-  'captions': 5,
+  captions: 5,
   'audio-description': 5,
   'consistent-navigation': 5,
 };

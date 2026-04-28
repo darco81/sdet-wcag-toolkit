@@ -10,15 +10,8 @@
  * stay in the Pro tier.
  */
 
-import {
-  scoreAndGrade,
-  type WcagFinding,
-  type WcagGrade,
-} from '@sdet-wcag-toolkit/core';
-import {
-  formatDevReport,
-  formatExecSummary,
-} from '@sdet-wcag-toolkit/reporter';
+import { scoreAndGrade, type WcagFinding, type WcagGrade } from '@sdet-wcag-toolkit/core';
+import { formatDevReport, formatExecSummary } from '@sdet-wcag-toolkit/reporter';
 import {
   SPECIALIST_AGENT_IDS,
   loadAllSystemPrompts,
@@ -163,16 +156,13 @@ async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let cursor = 0;
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    async () => {
-      while (true) {
-        const index = cursor++;
-        if (index >= items.length) return;
-        results[index] = await fn(items[index]!);
-      }
-    },
-  );
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index]!);
+    }
+  });
   await Promise.all(workers);
   return results;
 }

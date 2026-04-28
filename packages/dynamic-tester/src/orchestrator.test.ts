@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  DynamicTesterOrchestrator,
-  createDefaultDynamicOrchestrator,
-} from './orchestrator.js';
+import { DynamicTesterOrchestrator, createDefaultDynamicOrchestrator } from './orchestrator.js';
 
 describe('DynamicTesterOrchestrator', () => {
   it('registers the three built-in runners by default', () => {
@@ -13,7 +10,14 @@ describe('DynamicTesterOrchestrator', () => {
 
   it('accepts a custom runner set', () => {
     const orch = new DynamicTesterOrchestrator({
-      runners: [{ name: 'only-me', async run() { return []; } }],
+      runners: [
+        {
+          name: 'only-me',
+          async run() {
+            return [];
+          },
+        },
+      ],
     });
     expect(orch.list()).toEqual(['only-me']);
   });

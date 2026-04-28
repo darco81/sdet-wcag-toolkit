@@ -70,9 +70,7 @@ describe('ariaAnalyzer - id reference integrity', () => {
   });
 
   it('handles multiple space-separated id refs', () => {
-    const findings = run(
-      '<span id="a">A</span><button aria-labelledby="a missing">x</button>',
-    );
+    const findings = run('<span id="a">A</span><button aria-labelledby="a missing">x</button>');
     const hit = findings.find((f) => f.ruleId === 'aria-idref-labelledby');
     expect(hit?.message).toContain('missing');
   });

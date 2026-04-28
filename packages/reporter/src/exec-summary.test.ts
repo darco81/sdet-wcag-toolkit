@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { requireSuccessCriterion, type WcagFinding, type WcagSeverity } from '@sdet-wcag-toolkit/core';
+import {
+  requireSuccessCriterion,
+  type WcagFinding,
+  type WcagSeverity,
+} from '@sdet-wcag-toolkit/core';
 
 import { formatExecSummary } from './exec-summary.js';
 

@@ -53,8 +53,7 @@ export class FocusVisibilityRunner implements DynamicRunner {
           const shadowVisible = s.boxShadow !== 'none' && s.boxShadow !== '';
           // A thick colored border can also function as a focus indicator; we
           // trust it if >= 2px.
-          const borderVisible =
-            s.borderStyle !== 'none' && parseFloat(s.borderWidth || '0') >= 2;
+          const borderVisible = s.borderStyle !== 'none' && parseFloat(s.borderWidth || '0') >= 2;
           return outlineVisible || shadowVisible || borderVisible;
         }
       });

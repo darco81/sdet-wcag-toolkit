@@ -63,16 +63,9 @@ export function parseAgentOutput(raw: string, agentId: string): WcagFinding[] {
   try {
     parsed = JSON.parse(jsonStr);
   } catch (e) {
-    throw new ParseError(
-      `Agent "${agentId}" returned invalid JSON: ${(e as Error).message}`,
-      raw,
-    );
+    throw new ParseError(`Agent "${agentId}" returned invalid JSON: ${(e as Error).message}`, raw);
   }
-  const arrayInput = Array.isArray(parsed)
-    ? parsed
-    : isEnvelope(parsed)
-      ? parsed.findings
-      : null;
+  const arrayInput = Array.isArray(parsed) ? parsed : isEnvelope(parsed) ? parsed.findings : null;
   if (!arrayInput) {
     throw new ParseError(
       `Agent "${agentId}" returned non-array JSON (expected array or { findings: [] })`,

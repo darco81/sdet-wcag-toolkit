@@ -41,10 +41,18 @@ export function formatExecSummary(
   lines.push(`## Score: ${score} (Grade ${grade})`);
   lines.push('');
   lines.push('Severity breakdown:');
-  if (breakdown.critical > 0) lines.push(`- ${breakdown.critical} critical (-${breakdown.critical * PENALTY_WEIGHT.critical})`);
-  if (breakdown.serious > 0) lines.push(`- ${breakdown.serious} serious (-${breakdown.serious * PENALTY_WEIGHT.serious})`);
-  if (breakdown.moderate > 0) lines.push(`- ${breakdown.moderate} moderate (-${breakdown.moderate * PENALTY_WEIGHT.moderate})`);
-  if (breakdown.minor > 0) lines.push(`- ${breakdown.minor} minor (-${breakdown.minor * PENALTY_WEIGHT.minor})`);
+  if (breakdown.critical > 0)
+    lines.push(
+      `- ${breakdown.critical} critical (-${breakdown.critical * PENALTY_WEIGHT.critical})`,
+    );
+  if (breakdown.serious > 0)
+    lines.push(`- ${breakdown.serious} serious (-${breakdown.serious * PENALTY_WEIGHT.serious})`);
+  if (breakdown.moderate > 0)
+    lines.push(
+      `- ${breakdown.moderate} moderate (-${breakdown.moderate * PENALTY_WEIGHT.moderate})`,
+    );
+  if (breakdown.minor > 0)
+    lines.push(`- ${breakdown.minor} minor (-${breakdown.minor * PENALTY_WEIGHT.minor})`);
   if (breakdown.total === 0) lines.push('- (none - perfect score)');
 
   lines.push('');
@@ -58,9 +66,7 @@ export function formatExecSummary(
     lines.push('');
     const top = sortByPriority(findings).slice(0, topN);
     top.forEach((finding, index) => {
-      lines.push(
-        `${index + 1}. **${plainTitle(finding)}** - ${nonTechnicalConsequence(finding)}`,
-      );
+      lines.push(`${index + 1}. **${plainTitle(finding)}** - ${nonTechnicalConsequence(finding)}`);
     });
   }
 

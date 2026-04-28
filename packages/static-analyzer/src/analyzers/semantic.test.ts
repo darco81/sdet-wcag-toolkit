@@ -123,8 +123,7 @@ describe('semanticAnalyzer', () => {
   });
 
   it('produces stable ids so the same violation dedups across runs', () => {
-    const doc =
-      '<!doctype html><html lang="en"><head></head><body><p>no main</p></body></html>';
+    const doc = '<!doctype html><html lang="en"><head></head><body><p>no main</p></body></html>';
     const a = semanticAnalyzer.analyze(ctx([html(doc)]));
     const b = semanticAnalyzer.analyze(ctx([html(doc)]));
     expect(a.map((f) => f.id).sort()).toEqual(b.map((f) => f.id).sort());

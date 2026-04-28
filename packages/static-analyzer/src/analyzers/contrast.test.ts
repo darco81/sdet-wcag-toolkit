@@ -76,9 +76,7 @@ describe('contrastAnalyzer - CSS rules', () => {
   });
 
   it('skips rules without both color and background', () => {
-    const findings = contrastAnalyzer.analyze(
-      ctx({ css: [css('.x { color: #bbbbbb; }')] }),
-    );
+    const findings = contrastAnalyzer.analyze(ctx({ css: [css('.x { color: #bbbbbb; }')] }));
     expect(findings).toHaveLength(0);
   });
 

@@ -15,12 +15,7 @@
 import type { ToolDefinition } from './types.js';
 
 /** Tools audit agents may use. Kept intentionally small. */
-export const ALLOWED_AUDIT_TOOLS: ReadonlySet<string> = new Set([
-  'Read',
-  'Grep',
-  'Glob',
-  'LS',
-]);
+export const ALLOWED_AUDIT_TOOLS: ReadonlySet<string> = new Set(['Read', 'Grep', 'Glob', 'LS']);
 
 /** Tools explicitly banned from audit agents. Always wins over allowlist. */
 export const DENIED_AUDIT_TOOLS: ReadonlySet<string> = new Set([

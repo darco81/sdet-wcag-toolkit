@@ -9,10 +9,7 @@ import { dirname, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  countBySeverity,
-  gradeWithCriticalPenalty,
-} from '@sdet-wcag-toolkit/core';
+import { countBySeverity, gradeWithCriticalPenalty } from '@sdet-wcag-toolkit/core';
 import { createDefaultOrchestrator, loadSources } from '@sdet-wcag-toolkit/static-analyzer';
 
 const HERE = dirname(fileURLToPath(import.meta.url));

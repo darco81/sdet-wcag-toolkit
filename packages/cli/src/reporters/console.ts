@@ -50,7 +50,9 @@ export function formatConsoleReport(
 
   if (findings.length > sorted.length) {
     lines.push('');
-    lines.push(chalk.dim(`…and ${findings.length - sorted.length} more. Use --json for the full list.`));
+    lines.push(
+      chalk.dim(`…and ${findings.length - sorted.length} more. Use --json for the full list.`),
+    );
   }
 
   return lines.join('\n');

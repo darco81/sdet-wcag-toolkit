@@ -29,7 +29,10 @@ import type { Analyzer, SourceFile } from '../types.js';
 // colord's TS types don't play well with NodeNext default-import resolution;
 // the plugins are callable at runtime, so cast to the expected shape.
 type ColordPlugin = Parameters<typeof extend>[0][number];
-extend([namesPluginDefault as unknown as ColordPlugin, a11yPluginDefault as unknown as ColordPlugin]);
+extend([
+  namesPluginDefault as unknown as ColordPlugin,
+  a11yPluginDefault as unknown as ColordPlugin,
+]);
 
 /** WCAG 2.2 AA minimum contrast for normal-sized body text. */
 export const AA_NORMAL_MIN_RATIO = 4.5;
