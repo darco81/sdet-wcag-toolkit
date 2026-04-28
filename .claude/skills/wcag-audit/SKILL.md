@@ -1,11 +1,12 @@
 ---
 name: wcag-audit
-description: Run a WCAG 2.2 AA audit using the v0.3 Lead orchestrator with 5 AI specialist agents (semantic-structure, aria-patterns, keyboard-interaction, color-contrast-static, forms-accessibility). Combines source-reading AI agents with static TypeScript analyzer and optional dynamic axe-core. Returns findings, A-F grade, and 0-100 score. Use when the user invokes /wcag:audit, says "audit accessibility", "WCAG audit", "run WCAG", or asks to grade a site.
+description: Run a WCAG 2.2 AA audit using v0.3 - 5 AI specialist agents (dispatched via Task tool from this session) + static TypeScript analyzer + optional dynamic axe-core. Returns findings, A-F grade, and 0-100 score. Use when the user invokes /wcag:audit, says "audit accessibility", "WCAG audit", "run WCAG", or asks to grade a site.
 ---
 
-This skill runs the v0.3 audit pipeline - static TypeScript analyzer +
-5 AI specialists (via Lead orchestrator) + optional dynamic axe-core -
-and produces a graded report.
+This skill runs the v0.3 audit pipeline. CC dispatches the 5 AI
+specialists directly through the Task tool (this session). Static
+and dynamic analysis run separately via the CLI (Node subprocess).
+Findings merge, dedupe, score, and grade.
 
 ## When to use
 
@@ -18,62 +19,158 @@ asks for the deterministic-only path (CI gate, no LLM, no Task tool).
 
 ## What it does
 
-1. Detects the audit target - a path, a URL, or both - from
-   `$ARGUMENTS` or the current workspace.
-2. Builds the toolkit if `packages/cli/dist/` is missing.
-3. Runs the CLI with `--use-ai`:
-   ```bash
-   node packages/cli/dist/bin/wcag-toolkit.js audit <path> [--url <url>] --use-ai --json > /tmp/wcag-audit-findings.json
-   ```
-   The `--use-ai` flag dispatches the Lead orchestrator, which fans
-   out to 5 WCAG specialists in parallel via the Task tool:
+The audit has three parallel sources:
+
+1. **AI specialists (5 agents, dispatched via Task tool from this session):**
    - `semantic-structure-agent`
    - `aria-patterns-agent`
    - `keyboard-interaction-agent`
    - `color-contrast-static-agent`
    - `forms-accessibility-agent`
-4. Reads the resulting `findings.json` and presents:
-   - **Score:** 0-100 (severity-weighted: critical -15, serious -10,
-     moderate -5, minor -2; floored at 0)
-   - **Grade:** A 90+, B 75-89, C 50-74, D 25-49, F <25
-   - Top-N findings sorted by priority
-   - Severity breakdown table
+
+2. **Static TypeScript analyzer (via CLI subprocess):**
+   - HTML/CSS pattern matching (img-alt, html-lang, landmarks)
+   - Always runs alongside AI agents, deterministic
+
+3. **Dynamic Playwright + axe-core (via CLI subprocess, if --url provided):**
+   - Runtime DOM checks (computed contrast, focus visibility, keyboard flow)
+
+Findings from all three sources merge and dedupe by `(ruleId, file, line, url)`.
+Score is severity-weighted (critical -15, serious -10, moderate -5, minor -2;
+floored at 0). Grade band: A 90+, B 75-89, C 50-74, D 25-49, F <25.
 
 ## How to orchestrate
 
+### Step 1: Resolve target
+
+Parse `$ARGUMENTS`:
+- First positional → `<path>` (default: cwd if running inside target repo)
+- `--url <url>` → optional dynamic target
+- If neither path nor url → ask user which to audit
+
+### Step 2: Verify build artifacts
+
+If `packages/cli/dist/bin/wcag-toolkit.js` is missing:
+
+```bash
+cd <path-to-sdet-wcag-toolkit>
+pnpm install && pnpm -r build
 ```
-1. Parse $ARGUMENTS - extract path (first positional) and --url (if present).
-2. If neither is provided, ask the user which they want to audit.
-3. Verify packages/cli/dist exists; if not, run `pnpm install && pnpm -r build`.
-4. Run the CLI command above. Capture stdout JSON.
-5. Read /tmp/wcag-audit-findings.json. If empty, say "Clean audit, Grade A".
-6. Otherwise, summarize:
-   - Top 5 findings (rule id, file:line, severity)
-   - Score and grade
-   - Severity breakdown
-7. End with the next-step suggestion: fix the Top 1-3 manually or
-   try the v0.4 Pro auto-fix engine (if installed).
+
+### Step 3: Dispatch 5 AI specialists in parallel (via Task tool, from this session)
+
+Use the Task tool DIRECTLY from this CC session. Send a SINGLE message
+with 5 parallel Task calls - they run in parallel and you collect all
+results before continuing.
+
+For each specialist, the Task call shape is:
+
 ```
+Task({
+  subagent_type: "<agent-id>",
+  description: "WCAG audit: <agent-id>",
+  prompt: "Audit the WCAG 2.2 AA <scope> issues in <path>. Read source files using Read/Grep/Glob. Return findings as JSON array per the WcagFinding schema (id, ruleId, severity, wcagSC, file, line, snippet, message)."
+})
+```
+
+Five invocations, parameters per agent:
+
+| subagent_type | scope phrase |
+|---|---|
+| semantic-structure-agent | semantic structure |
+| aria-patterns-agent | ARIA pattern misuse |
+| keyboard-interaction-agent | keyboard interaction |
+| color-contrast-static-agent | color contrast (static, in source CSS) |
+| forms-accessibility-agent | forms accessibility |
+
+Send all 5 Task calls in a single message (parallel dispatch).
+
+For each Task response:
+- Extract JSON block from text (in ` ```json ... ``` ` fence, or raw array)
+- If parse fails or response is empty, log warning, continue with others
+- Collect successful findings into a list
+- Track failed agents separately for the final report (do not block - partial
+  results are still useful)
+
+### Step 4: Run static analyzer (via CLI subprocess)
+
+```bash
+node packages/cli/dist/bin/wcag-toolkit.js audit <path> --json > /tmp/wcag-static.json
+```
+
+This runs deterministic HTML/CSS analysis. **DO NOT pass `--use-ai` flag**
+- AI was already dispatched directly in Step 3. Passing `--use-ai` here
+would re-attempt Task lookup inside Node subprocess, where Task is
+unavailable, and silently fail.
+
+Parse `/tmp/wcag-static.json` (JSON array), add findings to the running list.
+
+### Step 5: Run dynamic tester (only if --url provided)
+
+```bash
+node packages/cli/dist/bin/wcag-toolkit.js audit --url <url> --json > /tmp/wcag-dynamic.json
+```
+
+Parse JSON output, add findings to the list.
+
+### Step 6: Merge, dedupe, score, grade
+
+- Dedupe by `(ruleId, file, line, url)` - same key = same finding, keep first
+- Sort by severity priority (critical → serious → moderate → minor)
+- Score: 100 - (critical × 15) - (serious × 10) - (moderate × 5) - (minor × 2),
+  floored at 0
+- Grade band: A 90+, B 75-89, C 50-74, D 25-49, F <25
+
+### Step 7: Present report
+
+Format Top-N findings (default 5-10) in a concise table:
+- Rule ID
+- WCAG SC reference
+- Severity
+- Location (file:line, or selector for dynamic)
+
+Followed by:
+- Severity breakdown table (critical / serious / moderate / minor)
+- Score and grade
+- Top 3 priority recommendations
+
+If any agent failed in Step 3, mention it briefly:
+"N agent(s) returned errors - results from M specialists + static + dynamic."
+
+Don't block on agent errors - partial results are still useful.
+
+### Step 8: Save findings JSON for downstream tools
+
+Write merged findings to `/tmp/wcag-audit-findings.json` (JSON array).
+Subsequent `/wcag:fix` calls can read this file.
 
 ## Outside-of-CC fallback
 
-If the user runs `/wcag:audit` outside a Claude Code session (e.g. via
-direct shell), `--use-ai` will fail with a clear error message. In
-that case, drop `--use-ai` and run the static + dynamic pipeline only:
+If user runs CLI directly outside CC session (e.g. CI):
 
 ```bash
 node packages/cli/dist/bin/wcag-toolkit.js audit <path> --json
 ```
 
-The output won't include the 5 AI specialists, but static + dynamic
-still cover ~60% of the v0.3 capability.
+This skips AI specialists (no Task tool available), runs static + dynamic
+only (~60% of v0.3 capability). For full AI tier, invoke this skill from
+within a Claude Code session.
+
+## Architecture note
+
+The 5 AI specialists are dispatched DIRECTLY via the Task tool from the
+CC session running this skill. We do NOT call `--use-ai` on the CLI
+subprocess - that flag re-attempts Task lookup inside Node subprocess
+where `globalThis.Task` is unavailable, causing silent agent failures
+and a fall-through to static + dynamic only. Bash subprocess is used
+here only for static and dynamic analysis (which do not need Task).
 
 ## Scope reminders
 
 - WCAG 2.2 Level AA only. AAA is not tracked.
 - 5 specialists in public toolkit. Pro tier adds modal-specialist,
   ecommerce-journey, and multi-runtime support.
-- The Lead orchestrator's dedupe is simple (ruleId + file:line + url).
-  Pro tier adds deep semantic dedupe.
+- Dedupe is simple (ruleId + file:line + url). Pro tier adds deep
+  semantic dedupe.
 - No auto-fix in public - see `/wcag:fix` skill for the Pro tier
   wrapper or manual remediation guidance.
