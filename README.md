@@ -2,6 +2,10 @@
 
 WCAG 2.2 AA accessibility toolkit for modern web applications.
 
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-237%20passing-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-v0.3.0-orange.svg)](CHANGELOG.md)
+
 > **Status:** v0.3.0 - **5 AI specialists, Lead orchestrator, A-F
 > grade.** Static + AI source-reading + dynamic analysis, markdown
 > reports with score, Claude Code integration. Self-fix engine and
@@ -180,6 +184,17 @@ provides, get in touch via **sdet.it/services**.
 | Static + dynamic + AI source-reading | + multi-runtime (OpenCode, Ollama) |
 | Manual fix walkthrough via /wcag:fix | + AST auto-fix + verifier + PR |
 | AGPL-3.0 license | Commercial license, on-prem option |
+
+## Built with sdet-wcag-toolkit?
+
+- ⭐ **Star the repo** if you find it useful
+- 🐛 **Open an issue** if you find a bug or missed SC
+- 💬 **Discussions** for usage questions and architecture talk
+- 💼 **Commercial support** at [sdet.it/services](https://sdet.it/services)
+
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the v0.3
+pipeline diagrams and skill design pattern, and
+[docs/sprints/](./docs/sprints/) for per-release retrospectives.
 
 ## License
 
