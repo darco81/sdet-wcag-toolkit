@@ -6,3 +6,14 @@ pnpm-lock.yaml
 .pnpm-store
 *.min.js
 *.min.css
+
+# Markdown is hand-formatted (prettier breaks tables, wraps inline code
+# spans across lines, and reinterprets indented continuations as list
+# markers). Format markdown manually.
+*.md
+*.html
+.claude/
+
+# Demo fixtures intentionally contain WCAG violations and unusual markup.
+examples/demo-site/
+examples/react-basic/src/
