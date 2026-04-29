@@ -233,6 +233,104 @@ describe('runAudit multi-page dispatch', () => {
   });
 });
 
+describe('runAudit AI strategy wiring', () => {
+  async function captureStdout<T>(work: () => Promise<T>): Promise<{ writes: string[] }> {
+    const writes: string[] = [];
+    const original = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: unknown): boolean => {
+      writes.push(typeof chunk === 'string' ? chunk : String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      await work();
+      return { writes };
+    } finally {
+      process.stdout.write = original;
+    }
+  }
+
+  it('rejects --strategy=ai without a path arg', async () => {
+    await expect(
+      runAudit(undefined, makeOptions({ multiPage: true, strategy: 'ai' })),
+    ).rejects.toThrow(/--strategy=ai requires a source path/);
+  });
+
+  it('dispatches the route-discovery-agent through the injected TaskInvoker', async () => {
+    const taskInvoker = vi.fn(async () => ({
+      text: '```json\n{ "framework": "astro", "routes": [{"path": "/", "isDynamic": false}] }\n```',
+      durationMs: 10,
+    }));
+
+    const { writes } = await captureStdout(() =>
+      runAudit(
+        '.',
+        makeOptions({
+          multiPage: true,
+          strategy: 'ai',
+          dryRun: true,
+          json: true,
+        }),
+        { taskInvoker },
+      ),
+    );
+
+    expect(taskInvoker).toHaveBeenCalledOnce();
+    const call = taskInvoker.mock.calls[0]?.[0];
+    expect(call?.subagentType).toBe('route-discovery-agent');
+    expect(call?.prompt).toContain('Project root:');
+
+    const payload = JSON.parse(writes.join(''));
+    expect(payload.strategy).toBe('ai');
+    expect(payload.routes).toHaveLength(1);
+  });
+
+  it('does NOT wire the TaskInvoker when --use-ai is off (default registry behavior)', async () => {
+    const taskInvoker = vi.fn();
+
+    await captureStdout(() =>
+      runAudit(
+        '.',
+        makeOptions({
+          multiPage: true,
+          strategy: 'sitemap', // not ai → invoker stays unused
+          url: 'http://localhost:9999',
+          dryRun: true,
+          json: true,
+        }),
+        { taskInvoker: taskInvoker as unknown as Parameters<typeof runAudit>[2]['taskInvoker'] },
+      ),
+    );
+
+    expect(taskInvoker).not.toHaveBeenCalled();
+  });
+
+  it('--use-ai together with --multi-page wires the AI strategy into the auto-fallback chain', async () => {
+    // sitemap will fail (unreachable URL), router-scan will fail (no
+    // framework in cwd), so the chain falls through to ai which is now
+    // wired. The registry override path skips the live network/fs work.
+    const taskInvoker = vi.fn(async () => ({
+      text: '```json\n{ "framework": "next", "routes": [{"path": "/", "isDynamic": false}] }\n```',
+      durationMs: 5,
+    }));
+
+    await captureStdout(() =>
+      runAudit(
+        '.',
+        makeOptions({
+          multiPage: true,
+          useAi: true,
+          strategy: 'ai', // pin to ai so we don't depend on chain order
+          dryRun: true,
+          json: true,
+        }),
+        { taskInvoker },
+      ),
+    );
+
+    expect(taskInvoker).toHaveBeenCalledOnce();
+  });
+});
+
 describe('resolveMaxPages', () => {
   it('returns the default when the flag is absent', () => {
     expect(resolveMaxPages(undefined)).toBe(DEFAULT_MAX_PAGES);

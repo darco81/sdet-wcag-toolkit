@@ -194,11 +194,16 @@ describe('createDefaultStrategyRegistry', () => {
     expect(typeof registry['json-config']).toBe('function');
   });
 
-  it('default strategies report "not implemented yet" rather than throwing', async () => {
+  it('default strategies degrade gracefully (no throws, helpful warnings)', async () => {
     const registry = createDefaultStrategyRegistry();
-    const result = await registry.ai({});
-    expect(result.routes).toEqual([]);
-    expect(result.warnings[0]).toMatch(/not implemented yet/);
+    // ai needs an invoker that the default registry does not wire.
+    const aiResult = await registry.ai({ rootDir: '/proj' });
+    expect(aiResult.routes).toEqual([]);
+    expect(aiResult.warnings[0]).toMatch(/--use-ai/);
+    // json-config is the only strategy still stubbed in Phase 4.
+    const jsonResult = await registry['json-config']({});
+    expect(jsonResult.routes).toEqual([]);
+    expect(jsonResult.warnings[0]).toMatch(/not implemented yet/);
   });
 
   it('overrides take precedence over defaults', async () => {

@@ -15,6 +15,13 @@ export {
   urlToPath,
 } from './strategies/sitemap.js';
 
+export type {
+  AiAgentInvoker,
+  AiAgentStrategyOptions,
+  RouteDiscoveryAgentPayload,
+} from './strategies/ai-agent.js';
+export { createAiAgentStrategy, parseAiResponse } from './strategies/ai-agent.js';
+
 export type { RouterScanStrategyOptions } from './strategies/router-scan/index.js';
 export { createRouterScanStrategy } from './strategies/router-scan/index.js';
 export type {

@@ -17,6 +17,7 @@
 import type { RouteDiscoveryResult, RouteDiscoveryStrategy } from '@sdet-wcag-toolkit/core';
 
 import type { RouteDiscoveryStrategyFn, StrategyRegistry } from '../dispatcher.js';
+import { createAiAgentStrategy } from './ai-agent.js';
 import { createRouterScanStrategy } from './router-scan/index.js';
 import { createSitemapStrategy } from './sitemap.js';
 
@@ -33,12 +34,17 @@ function notImplemented(name: RouteDiscoveryStrategy): RouteDiscoveryStrategyFn 
  * Build the default strategy registry. Tests and Pro extensions can
  * pass in overrides to replace specific strategies (e.g. mock AI in
  * unit tests, swap sitemap fetcher in Pro tier).
+ *
+ * The default `ai` strategy ships without an invoker - it returns a
+ * helpful warning telling the user to enable `--use-ai` from a Claude
+ * Code session. The CLI replaces it with a wired version when running
+ * inside CC.
  */
 export function createDefaultStrategyRegistry(
   overrides: Partial<StrategyRegistry> = {},
 ): StrategyRegistry {
   return {
-    ai: overrides.ai ?? notImplemented('ai'),
+    ai: overrides.ai ?? createAiAgentStrategy(),
     sitemap: overrides.sitemap ?? createSitemapStrategy(),
     'router-scan': overrides['router-scan'] ?? createRouterScanStrategy(),
     'json-config': overrides['json-config'] ?? notImplemented('json-config'),

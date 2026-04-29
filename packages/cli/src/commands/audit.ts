@@ -31,12 +31,18 @@ import type {
 import { createDefaultDynamicOrchestrator } from '@sdet-wcag-toolkit/dynamic-tester';
 import { LeadOrchestrator } from '@sdet-wcag-toolkit/orchestrator';
 import {
+  type AiAgentInvoker,
+  createAiAgentStrategy,
   createDefaultStrategyRegistry,
   dispatchRouteDiscovery,
   type RouteDiscoveryContext,
   type StrategyRegistry,
 } from '@sdet-wcag-toolkit/route-discovery';
-import { ClaudeCodeRuntime } from '@sdet-wcag-toolkit/runtime-claude-code';
+import {
+  ClaudeCodeRuntime,
+  defaultTaskInvoker,
+  type TaskInvoker,
+} from '@sdet-wcag-toolkit/runtime-claude-code';
 import { createDefaultOrchestrator, loadSources } from '@sdet-wcag-toolkit/static-analyzer';
 
 import { formatConsoleReport } from '../reporters/console.js';
@@ -72,6 +78,12 @@ export interface AuditOptions {
 /** Internal seam - tests inject a mock registry to avoid hitting real strategies. */
 export interface RunAuditDeps {
   readonly strategyRegistry?: StrategyRegistry;
+  /**
+   * Override the Task invoker used by the AI strategy. Tests pass a
+   * recorded response; production wires the default Claude Code Task
+   * tool wrapper.
+   */
+  readonly taskInvoker?: TaskInvoker;
 }
 
 export function registerAuditCommand(program: Command): Command {
@@ -137,6 +149,10 @@ export async function runAudit(
 
   if (!options.multiPage && options.dryRun) {
     throw new Error('--dry-run only applies in --multi-page mode.');
+  }
+
+  if (options.multiPage && options.strategy === 'ai' && !pathArg) {
+    throw new Error('--strategy=ai requires a source path so the agent can read the project.');
   }
 
   // Multi-page path is currently a discovery preview. Audit loop ships in Phase 6.
@@ -262,13 +278,47 @@ async function discoverRoutes(
     maxPages: resolveMaxPages(options.maxPages),
   };
 
-  const registry = deps.strategyRegistry ?? createDefaultStrategyRegistry();
+  const registry = deps.strategyRegistry ?? buildRegistry(options, deps);
 
   return dispatchRouteDiscovery(context, registry, {
     ...(options.strategy !== undefined && {
       strategy: options.strategy as RouteDiscoveryStrategy,
     }),
   });
+}
+
+/**
+ * Build the default registry, wiring the Claude Code Task tool into
+ * the AI strategy when the user opted in (`--use-ai` or
+ * `--strategy=ai`). Without that opt-in, the AI strategy stays in its
+ * "no invoker" mode and emits a helpful warning instead of dispatching.
+ */
+function buildRegistry(options: AuditOptions, deps: RunAuditDeps): StrategyRegistry {
+  const aiEnabled = options.useAi || options.strategy === 'ai';
+  if (!aiEnabled) {
+    return createDefaultStrategyRegistry();
+  }
+  const taskInvoker = deps.taskInvoker ?? defaultTaskInvoker;
+  const aiInvoker = wrapTaskInvokerForRouteDiscovery(taskInvoker);
+  return createDefaultStrategyRegistry({
+    ai: createAiAgentStrategy({ invoker: aiInvoker }),
+  });
+}
+
+/**
+ * Bridge a Claude Code TaskInvoker to the route-discovery AiAgentInvoker
+ * shape. The agent definition lives at
+ * `.claude/agents/route-discovery-agent.md`.
+ */
+function wrapTaskInvokerForRouteDiscovery(taskInvoker: TaskInvoker): AiAgentInvoker {
+  return async ({ prompt }) => {
+    const result = await taskInvoker({
+      subagentType: 'route-discovery-agent',
+      description: 'WCAG multi-page route discovery',
+      prompt,
+    });
+    return result.text;
+  };
 }
 
 function renderDryRun(result: RouteDiscoveryResult): void {
