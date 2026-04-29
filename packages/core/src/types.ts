@@ -137,3 +137,60 @@ export interface RouteDiscoveryResult {
    */
   readonly warnings: readonly string[];
 }
+
+/**
+ * Why a discovered route was not audited. `dynamic-no-sample` covers
+ * `/blog/[slug]` without a `sampleUrl`; `runner-error` covers cases
+ * where the browser threw during navigation or a runner blew up.
+ */
+export type PageSkipReason = 'dynamic-no-sample' | 'runner-error' | 'max-pages';
+
+/**
+ * Outcome for a single page in a multi-page audit.
+ *
+ * `auditedUrl` is the full URL the browser visited (baseUrl + path or
+ * sampleUrl). `discoveredRoute.path` keeps the templated form so the
+ * report can show "/blog/[slug]" alongside the resolved URL.
+ *
+ * Skipped pages still appear in the report so users see the full set
+ * the discovery layer proposed; `findings` is empty when `skipped` is
+ * populated.
+ */
+export interface PageAuditResult {
+  readonly discoveredRoute: DiscoveredRoute;
+  readonly auditedUrl?: string;
+  readonly findings: readonly WcagFinding[];
+  readonly durationMs: number;
+  readonly skipped?: { readonly reason: PageSkipReason; readonly note: string };
+}
+
+/**
+ * Aggregated finding shared across multiple pages - produced by the
+ * cross-page deduper. The canonical `finding` is the first occurrence;
+ * `affectedPages` lists every URL where it appeared. The grouping key
+ * is `(ruleId + location.file/line OR location.selector)` so a single
+ * source-level fix collapses many page hits into one entry.
+ */
+export interface CrossPageFinding {
+  readonly finding: WcagFinding;
+  readonly affectedPages: readonly string[];
+  readonly occurrenceCount: number;
+}
+
+/** Top-level report for a multi-page audit. */
+export interface MultiPageAuditReport {
+  readonly baseUrl: string;
+  readonly discovery: RouteDiscoveryResult;
+  readonly pages: readonly PageAuditResult[];
+  /** Cross-page deduplicated findings (single fix → many pages green). */
+  readonly crossPage: readonly CrossPageFinding[];
+  /** Wall-clock time for the full audit, including discovery + per-page work. */
+  readonly totalDurationMs: number;
+  /** Counts that summarise the run for the console + JSON outputs. */
+  readonly summary: {
+    readonly pagesAudited: number;
+    readonly pagesSkipped: number;
+    readonly totalFindings: number;
+    readonly uniqueFindings: number;
+  };
+}

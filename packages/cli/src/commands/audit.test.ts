@@ -154,7 +154,7 @@ describe('runAudit multi-page dispatch', () => {
     }
   }
 
-  it('emits JSON payload with discovered routes when --json + --multi-page', async () => {
+  it('emits the discovery payload when --dry-run + --json + --multi-page', async () => {
     const sitemap = vi.fn(
       async (): Promise<RouteDiscoveryResult> => ({
         strategy: 'sitemap',
@@ -174,6 +174,7 @@ describe('runAudit multi-page dispatch', () => {
           multiPage: true,
           strategy: 'sitemap',
           url: 'http://localhost:4321',
+          dryRun: true,
           json: true,
         }),
         { strategyRegistry: registry },
@@ -185,7 +186,7 @@ describe('runAudit multi-page dispatch', () => {
     expect(payload.routes).toHaveLength(2);
   });
 
-  it('passes --max-pages through to the dispatcher context', async () => {
+  it('passes --max-pages through to the dispatcher context (dry-run)', async () => {
     const captured: { maxPages?: number }[] = [];
     const sitemap = vi.fn(async (ctx): Promise<RouteDiscoveryResult> => {
       captured.push({ ...(ctx.maxPages !== undefined && { maxPages: ctx.maxPages }) });
@@ -209,6 +210,7 @@ describe('runAudit multi-page dispatch', () => {
           strategy: 'sitemap',
           url: 'http://localhost:4321',
           maxPages: '3',
+          dryRun: true,
           json: true,
         }),
         { strategyRegistry: registry },
@@ -230,6 +232,59 @@ describe('runAudit multi-page dispatch', () => {
       runAudit(undefined, makeOptions(), { strategyRegistry: registry }),
     ).rejects.toThrow();
     expect(sitemap).not.toHaveBeenCalled();
+  });
+
+  it('throws a clear error when --multi-page runs without --url or wcag.config.json baseUrl', async () => {
+    const sitemap = vi.fn(
+      async (): Promise<RouteDiscoveryResult> => ({
+        strategy: 'sitemap',
+        routes: [{ path: '/about', source: 'sitemap.xml', isDynamic: false }],
+        confidence: 1,
+        warnings: [],
+      }),
+    );
+    const registry = createDefaultStrategyRegistry({ sitemap });
+    await expect(
+      runAudit('.', makeOptions({ multiPage: true, strategy: 'sitemap' }), {
+        strategyRegistry: registry,
+      }),
+    ).rejects.toThrow(/--multi-page audit needs a base URL/);
+  });
+
+  it('runs the multi-page orchestrator and emits a JSON report when discovery is empty (no browser launch)', async () => {
+    // An empty route list short-circuits the orchestrator before it
+    // touches Playwright, so this test exercises the wiring without
+    // needing a real browser.
+    const sitemap = vi.fn(
+      async (): Promise<RouteDiscoveryResult> => ({
+        strategy: 'sitemap',
+        routes: [],
+        confidence: 0,
+        warnings: ['no routes'],
+      }),
+    );
+    const registry = createDefaultStrategyRegistry({ sitemap });
+    const { writes } = await captureStdout(() =>
+      runAudit(
+        undefined,
+        makeOptions({
+          multiPage: true,
+          strategy: 'sitemap',
+          url: 'http://localhost:4321',
+          json: true,
+        }),
+        { strategyRegistry: registry },
+      ),
+    );
+    const report = JSON.parse(writes.join(''));
+    expect(report.baseUrl).toBe('http://localhost:4321');
+    expect(report.summary).toEqual({
+      pagesAudited: 0,
+      pagesSkipped: 0,
+      totalFindings: 0,
+      uniqueFindings: 0,
+    });
+    expect(report.discovery.strategy).toBe('sitemap');
   });
 });
 

@@ -10,26 +10,31 @@
  *   - Multi-page:     add `--multi-page` to discover and audit a list of
  *                     pages instead of just `--url`. Strategy auto-falls
  *                     back through sitemap → router-scan → json-config.
- *                     Pin a strategy with `--strategy=<name>`.
- *                     Phase 1 ships the discovery wiring; the actual
- *                     per-page audit loop arrives in Phase 6.
+ *                     Pin a strategy with `--strategy=<name>`. Add
+ *                     `--dry-run` to list URLs without launching the
+ *                     browser. `audit.baseUrl` from `wcag.config.json`
+ *                     is honored when `--url` is omitted.
  *
  * `--use-ai` and `--multi-page` are both opt-in to preserve v0.3 CI
  * behavior - running without either flag is a byte-for-byte v0.3 audit.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import chalk from 'chalk';
 import { Command } from 'commander';
 
 import type {
+  MultiPageAuditReport,
   RouteDiscoveryResult,
   RouteDiscoveryStrategy,
   WcagFinding,
 } from '@sdet-wcag-toolkit/core';
-import { createDefaultDynamicOrchestrator } from '@sdet-wcag-toolkit/dynamic-tester';
+import {
+  createDefaultDynamicOrchestrator,
+  MultiPageOrchestrator,
+} from '@sdet-wcag-toolkit/dynamic-tester';
 import { LeadOrchestrator } from '@sdet-wcag-toolkit/orchestrator';
 import {
   type AiAgentInvoker,
@@ -37,6 +42,7 @@ import {
   createDefaultStrategyRegistry,
   DEFAULT_CONFIG_FILENAME,
   dispatchRouteDiscovery,
+  parseConfig,
   type RouteDiscoveryContext,
   type StrategyRegistry,
 } from '@sdet-wcag-toolkit/route-discovery';
@@ -157,11 +163,12 @@ export async function runAudit(
     throw new Error('--strategy=ai requires a source path so the agent can read the project.');
   }
 
-  // Multi-page path is currently a discovery preview. Audit loop ships in Phase 6.
+  // Multi-page path: discover routes, then either preview them
+  // (--dry-run) or run the per-page audit loop (Phase 6+).
   if (options.multiPage) {
     const discovery = await discoverRoutes(pathArg, options, deps);
 
-    if (options.dryRun || options.json) {
+    if (options.dryRun) {
       const payload = {
         strategy: discovery.strategy,
         confidence: discovery.confidence,
@@ -176,15 +183,33 @@ export async function runAudit(
       return;
     }
 
-    // Phase 6 will replace this with the multi-page orchestrator. Until
-    // then we stop after discovery to avoid silently regressing v0.3
-    // single-page behavior.
-    renderDryRun(discovery);
-    console.log(
-      chalk.dim(
-        '\n(Multi-page audit loop lands in V0.4 Phase 6. Phase 1 ships discovery + dispatcher.)',
-      ),
-    );
+    const baseUrl = resolveBaseUrl(options, deps);
+    if (!baseUrl) {
+      throw new Error(
+        '--multi-page audit needs a base URL. Pass --url, or include audit.baseUrl in wcag.config.json.',
+      );
+    }
+
+    const orch = new MultiPageOrchestrator();
+    const report = await orch.run({
+      baseUrl,
+      discovery,
+      maxPages: resolveMaxPages(options.maxPages),
+    });
+
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      renderMultiPageReport(report);
+    }
+
+    if (
+      report.crossPage.some(
+        (cp) => cp.finding.severity === 'critical' || cp.finding.severity === 'serious',
+      )
+    ) {
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -336,6 +361,92 @@ function wrapTaskInvokerForRouteDiscovery(taskInvoker: TaskInvoker): AiAgentInvo
     });
     return result.text;
   };
+}
+
+/**
+ * Resolve the base URL the multi-page orchestrator should use. Order:
+ *   1. Explicit `--url` flag (wins everywhere).
+ *   2. `audit.baseUrl` in `wcag.config.json` if a config is reachable.
+ *
+ * Returns `undefined` when neither is available so the caller can
+ * surface a friendly error instead of silently falling back to a
+ * meaningless URL.
+ */
+function resolveBaseUrl(options: AuditOptions, _deps: RunAuditDeps): string | undefined {
+  if (options.url) return options.url;
+  const configPath = resolveConfigPath(options.config);
+  if (configPath === undefined) return undefined;
+  try {
+    const raw = readFileSync(configPath, 'utf8');
+    const parsed = parseConfig(raw);
+    if (parsed.kind === 'ok') return parsed.config.audit.baseUrl;
+  } catch {
+    // Fall through - the orchestrator will throw a clearer error.
+  }
+  return undefined;
+}
+
+function renderMultiPageReport(report: MultiPageAuditReport): void {
+  const { summary } = report;
+  console.log(
+    chalk.bold(
+      `\nMulti-page audit complete - ${summary.pagesAudited} page(s) audited, ${summary.pagesSkipped} skipped, ${summary.uniqueFindings} unique finding(s) across ${summary.totalFindings} total occurrence(s).`,
+    ),
+  );
+  console.log(chalk.dim(`Base URL: ${report.baseUrl}`));
+  console.log(
+    chalk.dim(
+      `Discovery strategy: ${report.discovery.strategy} (confidence ${report.discovery.confidence.toFixed(2)})`,
+    ),
+  );
+  console.log(chalk.dim(`Total time: ${(report.totalDurationMs / 1000).toFixed(1)}s`));
+
+  if (report.crossPage.length > 0) {
+    console.log(chalk.bold('\nTop cross-page findings:'));
+    const top = [...report.crossPage]
+      .sort((a, b) => b.affectedPages.length - a.affectedPages.length)
+      .slice(0, 10);
+    for (const entry of top) {
+      const sev = severityColor(entry.finding.severity)(
+        entry.finding.severity.toUpperCase().padEnd(8),
+      );
+      console.log(
+        `  ${sev} ${entry.finding.ruleId} - ${chalk.bold(entry.affectedPages.length)} page(s)`,
+      );
+      console.log(chalk.dim(`    ${entry.finding.message}`));
+      if (entry.affectedPages.length <= 5) {
+        for (const url of entry.affectedPages) console.log(chalk.dim(`      • ${url}`));
+      } else {
+        for (const url of entry.affectedPages.slice(0, 3)) console.log(chalk.dim(`      • ${url}`));
+        console.log(chalk.dim(`      … +${entry.affectedPages.length - 3} more`));
+      }
+    }
+  }
+
+  const skipped = report.pages.filter((p) => p.skipped !== undefined);
+  if (skipped.length > 0) {
+    console.log(chalk.yellow(`\nSkipped pages (${skipped.length}):`));
+    for (const page of skipped) {
+      console.log(
+        chalk.yellow(
+          `  ! ${page.discoveredRoute.path} - ${page.skipped?.reason}: ${page.skipped?.note}`,
+        ),
+      );
+    }
+  }
+}
+
+function severityColor(severity: WcagFinding['severity']): (text: string) => string {
+  switch (severity) {
+    case 'critical':
+      return chalk.bgRed.white;
+    case 'serious':
+      return chalk.red;
+    case 'moderate':
+      return chalk.yellow;
+    case 'minor':
+      return chalk.cyan;
+  }
 }
 
 function renderDryRun(result: RouteDiscoveryResult): void {

@@ -1,5 +1,9 @@
 export type {
+  CrossPageFinding,
   DiscoveredRoute,
+  MultiPageAuditReport,
+  PageAuditResult,
+  PageSkipReason,
   RouteDiscoveryResult,
   RouteDiscoveryStrategy,
   WcagFinding,

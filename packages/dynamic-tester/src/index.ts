@@ -12,3 +12,17 @@ export { KeyboardFlowRunner } from './runners/keyboard-flow.js';
 export { FocusVisibilityRunner } from './runners/focus-visibility.js';
 export type { DynamicAuditOptions } from './orchestrator.js';
 export { DynamicTesterOrchestrator, createDefaultDynamicOrchestrator } from './orchestrator.js';
+
+export type {
+  MultiPageAuditOptions,
+  PageAuditFn,
+  PageAuditOutcome,
+  RunMultiPageInput,
+} from './multi-page-orchestrator.js';
+export {
+  MultiPageOrchestrator,
+  createMultiPageOrchestrator,
+  resolveAuditUrl,
+} from './multi-page-orchestrator.js';
+
+export { buildCrossPageFindings, groupingKey } from './cross-page-dedup.js';
