@@ -22,7 +22,8 @@
     "lint": "echo \"(no lint yet)\""
   },
   "dependencies": {
-    "@sdet-wcag-toolkit/core": "workspace:*"
+    "@sdet-wcag-toolkit/core": "workspace:*",
+    "fast-xml-parser": "^5.7.2"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",
