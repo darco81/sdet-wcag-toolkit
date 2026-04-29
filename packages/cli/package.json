@@ -21,6 +21,7 @@
     "@sdet-wcag-toolkit/dynamic-tester": "workspace:*",
     "@sdet-wcag-toolkit/orchestrator": "workspace:*",
     "@sdet-wcag-toolkit/reporter": "workspace:*",
+    "@sdet-wcag-toolkit/route-discovery": "workspace:*",
     "@sdet-wcag-toolkit/runtime-claude-code": "workspace:*",
     "@sdet-wcag-toolkit/runtime-core": "workspace:*",
     "@sdet-wcag-toolkit/static-analyzer": "workspace:*",

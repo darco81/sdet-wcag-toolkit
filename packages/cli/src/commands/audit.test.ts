@@ -1,13 +1,30 @@
 /**
- * Behavior tests for the `audit` command's argument plumbing - chiefly
- * the v0.3 `--use-ai` flag. The full audit pipeline is exercised in
- * integration.test.ts; this file isolates flag handling.
+ * Behavior tests for the `audit` command's argument plumbing - covers
+ * the v0.3 `--use-ai` flag and the V0.4 `--multi-page` family. The full
+ * audit pipeline is exercised in integration.test.ts; this file isolates
+ * flag handling.
  */
 
 import { Command } from 'commander';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { registerAuditCommand, runAudit } from './audit.js';
+import type { RouteDiscoveryResult } from '@sdet-wcag-toolkit/core';
+import { createDefaultStrategyRegistry } from '@sdet-wcag-toolkit/route-discovery';
+
+import { DEFAULT_MAX_PAGES, registerAuditCommand, resolveMaxPages, runAudit } from './audit.js';
+
+function makeOptions(
+  overrides: Partial<Parameters<typeof runAudit>[1]> = {},
+): Parameters<typeof runAudit>[1] {
+  return {
+    json: false,
+    top: '10',
+    useAi: false,
+    multiPage: false,
+    dryRun: false,
+    ...overrides,
+  } as Parameters<typeof runAudit>[1];
+}
 
 describe('registerAuditCommand', () => {
   it('exposes --use-ai as a boolean flag (default false)', () => {
@@ -19,7 +36,7 @@ describe('registerAuditCommand', () => {
     expect(useAi?.defaultValue).toBe(false);
   });
 
-  it('keeps the v0.2 flags intact for backward compatibility', () => {
+  it('keeps the v0.3 flags intact for backward compatibility', () => {
     const program = new Command();
     const cmd = registerAuditCommand(program);
     const longs = cmd.options.map((o) => o.long);
@@ -28,33 +45,206 @@ describe('registerAuditCommand', () => {
     );
   });
 
-  it('audit help text mentions --use-ai', () => {
+  it('exposes the V0.4 multi-page flag family', () => {
+    const program = new Command();
+    const cmd = registerAuditCommand(program);
+    const longs = cmd.options.map((o) => o.long);
+    expect(longs).toEqual(
+      expect.arrayContaining([
+        '--multi-page',
+        '--strategy',
+        '--max-pages',
+        '--config',
+        '--dry-run',
+      ]),
+    );
+  });
+
+  it('--multi-page defaults to false (strict backward compat)', () => {
+    const program = new Command();
+    const cmd = registerAuditCommand(program);
+    const flag = cmd.options.find((o) => o.long === '--multi-page');
+    expect(flag?.defaultValue).toBe(false);
+  });
+
+  it('audit help text mentions --use-ai and --multi-page', () => {
     const program = new Command();
     const cmd = registerAuditCommand(program);
     const help = cmd.helpInformation();
     expect(help).toContain('--use-ai');
-    expect(help).toMatch(/specialist|Claude Code|--use-ai/);
+    expect(help).toContain('--multi-page');
+    expect(help).toMatch(/sitemap|router-scan|strategy/);
   });
 });
 
 describe('runAudit input validation', () => {
   it('refuses --use-ai without a path', async () => {
-    await expect(
-      runAudit(undefined, {
-        json: false,
-        top: '10',
-        useAi: true,
-      } as Parameters<typeof runAudit>[1]),
-    ).rejects.toThrow(/AI agents require a source path/);
+    await expect(runAudit(undefined, makeOptions({ useAi: true }))).rejects.toThrow(
+      /AI agents require a source path/,
+    );
   });
 
-  it('still requires either path or url', async () => {
+  it('still requires either path or url (in single-page mode)', async () => {
+    await expect(runAudit(undefined, makeOptions())).rejects.toThrow(
+      /Provide a path argument, a --url, or both/,
+    );
+  });
+
+  it('rejects unknown --strategy values', async () => {
     await expect(
-      runAudit(undefined, {
-        json: false,
-        top: '10',
-        useAi: false,
-      } as Parameters<typeof runAudit>[1]),
-    ).rejects.toThrow(/Provide a path argument, a --url, or both/);
+      runAudit(undefined, makeOptions({ multiPage: true, strategy: 'mystery' })),
+    ).rejects.toThrow(/Unknown --strategy "mystery"/);
+  });
+
+  it('rejects --strategy outside of --multi-page mode', async () => {
+    await expect(runAudit('.', makeOptions({ strategy: 'sitemap' }))).rejects.toThrow(
+      /--strategy only applies in --multi-page mode/,
+    );
+  });
+
+  it('rejects --dry-run outside of --multi-page mode', async () => {
+    await expect(runAudit('.', makeOptions({ dryRun: true }))).rejects.toThrow(
+      /--dry-run only applies in --multi-page mode/,
+    );
+  });
+
+  it('accepts --multi-page with no path/url when --config is supplied', async () => {
+    const registry = createDefaultStrategyRegistry({
+      'json-config': async (): Promise<RouteDiscoveryResult> => ({
+        strategy: 'json-config',
+        routes: [{ path: '/', source: 'wcag.config.json', isDynamic: false }],
+        confidence: 1,
+        warnings: [],
+      }),
+    });
+    await expect(
+      runAudit(
+        undefined,
+        makeOptions({
+          multiPage: true,
+          strategy: 'json-config',
+          config: 'wcag.config.json',
+          dryRun: true,
+          json: true,
+        }),
+        { strategyRegistry: registry },
+      ),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('runAudit multi-page dispatch', () => {
+  /**
+   * Vitest captures stdout itself, which makes `vi.spyOn(process.stdout, 'write')`
+   * unreliable here - direct property replacement is the simplest way to record
+   * what runAudit emits without fighting the runner.
+   */
+  async function captureStdout<T>(work: () => Promise<T>): Promise<{ value: T; writes: string[] }> {
+    const writes: string[] = [];
+    const original = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: unknown): boolean => {
+      writes.push(typeof chunk === 'string' ? chunk : String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      const value = await work();
+      return { value, writes };
+    } finally {
+      process.stdout.write = original;
+    }
+  }
+
+  it('emits JSON payload with discovered routes when --json + --multi-page', async () => {
+    const sitemap = vi.fn(
+      async (): Promise<RouteDiscoveryResult> => ({
+        strategy: 'sitemap',
+        routes: [
+          { path: '/about', source: 'sitemap.xml', isDynamic: false },
+          { path: '/contact', source: 'sitemap.xml', isDynamic: false },
+        ],
+        confidence: 1,
+        warnings: [],
+      }),
+    );
+    const registry = createDefaultStrategyRegistry({ sitemap });
+    const { writes } = await captureStdout(() =>
+      runAudit(
+        undefined,
+        makeOptions({
+          multiPage: true,
+          strategy: 'sitemap',
+          url: 'http://localhost:4321',
+          json: true,
+        }),
+        { strategyRegistry: registry },
+      ),
+    );
+    expect(sitemap).toHaveBeenCalledOnce();
+    const payload = JSON.parse(writes.join(''));
+    expect(payload.strategy).toBe('sitemap');
+    expect(payload.routes).toHaveLength(2);
+  });
+
+  it('passes --max-pages through to the dispatcher context', async () => {
+    const captured: { maxPages?: number }[] = [];
+    const sitemap = vi.fn(async (ctx): Promise<RouteDiscoveryResult> => {
+      captured.push({ ...(ctx.maxPages !== undefined && { maxPages: ctx.maxPages }) });
+      return {
+        strategy: 'sitemap',
+        routes: Array.from({ length: 5 }, (_, i) => ({
+          path: `/p${i}`,
+          source: 'sitemap.xml',
+          isDynamic: false,
+        })),
+        confidence: 1,
+        warnings: [],
+      };
+    });
+    const registry = createDefaultStrategyRegistry({ sitemap });
+    const { writes } = await captureStdout(() =>
+      runAudit(
+        undefined,
+        makeOptions({
+          multiPage: true,
+          strategy: 'sitemap',
+          url: 'http://localhost:4321',
+          maxPages: '3',
+          json: true,
+        }),
+        { strategyRegistry: registry },
+      ),
+    );
+    expect(captured[0]?.maxPages).toBe(3);
+    const payload = JSON.parse(writes.join(''));
+    expect(payload.routes).toHaveLength(3);
+  });
+
+  it('does not invoke the strategy registry when --multi-page is off (backward compat)', async () => {
+    const sitemap = vi.fn();
+    const registry = createDefaultStrategyRegistry({
+      sitemap: sitemap as Parameters<typeof createDefaultStrategyRegistry>[0]['sitemap'],
+    });
+    // Will fail validation (no path/url) but the failure must occur
+    // before the strategy registry is consulted.
+    await expect(
+      runAudit(undefined, makeOptions(), { strategyRegistry: registry }),
+    ).rejects.toThrow();
+    expect(sitemap).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveMaxPages', () => {
+  it('returns the default when the flag is absent', () => {
+    expect(resolveMaxPages(undefined)).toBe(DEFAULT_MAX_PAGES);
+  });
+
+  it('parses explicit values', () => {
+    expect(resolveMaxPages('10')).toBe(10);
+    expect(resolveMaxPages('0')).toBe(0); // 0 = no limit
+  });
+
+  it('rejects non-numeric or negative input', () => {
+    expect(() => resolveMaxPages('abc')).toThrow(/Invalid --max-pages/);
+    expect(() => resolveMaxPages('-5')).toThrow(/Invalid --max-pages/);
   });
 });

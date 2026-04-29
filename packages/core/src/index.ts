@@ -1,4 +1,7 @@
 export type {
+  DiscoveredRoute,
+  RouteDiscoveryResult,
+  RouteDiscoveryStrategy,
   WcagFinding,
   WcagFindingLocation,
   WcagFindingSource,

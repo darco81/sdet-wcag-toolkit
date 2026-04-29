@@ -1,0 +1,31 @@
+{
+  "name": "@sdet-wcag-toolkit/route-discovery",
+  "version": "0.4.0",
+  "description": "Discover the list of pages to audit for multi-page WCAG runs (AI, sitemap, router-scan, JSON config)",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "echo \"(no lint yet)\""
+  },
+  "dependencies": {
+    "@sdet-wcag-toolkit/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "vitest": "^2.1.4"
+  }
+}

@@ -79,3 +79,61 @@ export interface WcagFinding {
   /** Optional link to extended docs for the rule. */
   readonly helpUrl?: string;
 }
+
+/**
+ * Strategy used to discover the list of pages to audit when running a
+ * multi-page audit. Listed in the auto-fallback order used by the
+ * dispatcher when the user does not pin a specific strategy.
+ *
+ * - `ai` - Claude Code agent reads framework files and emits routes.
+ * - `sitemap` - fetches and parses `<base>/sitemap.xml`.
+ * - `router-scan` - deterministic FS scan keyed off framework conventions.
+ * - `json-config` - explicit `wcag.config.json` page list (escape hatch).
+ */
+export type RouteDiscoveryStrategy = 'ai' | 'sitemap' | 'router-scan' | 'json-config';
+
+/**
+ * One page that a route-discovery strategy proposes for auditing.
+ *
+ * Static routes resolve directly to a URL. Dynamic routes (e.g.
+ * `/products/[slug]`) carry the unresolved `path` and, if the strategy
+ * could resolve a representative parameter, a `sampleUrl`.
+ */
+export interface DiscoveredRoute {
+  /** Route path, e.g. `/about` or `/products/[slug]`. */
+  readonly path: string;
+  /**
+   * Where the route was discovered - a source file path, a sitemap URL,
+   * or `wcag.config.json`. Surfaced in reports for provenance.
+   */
+  readonly source: string;
+  /** True when `path` contains unresolved dynamic parameters. */
+  readonly isDynamic: boolean;
+  /**
+   * Concrete URL to audit when `isDynamic` is true. Omitted when the
+   * route is static (the audit URL can be derived from `path`) or when
+   * the strategy could not resolve a representative parameter.
+   */
+  readonly sampleUrl?: string;
+}
+
+/**
+ * Result of a single route-discovery run. The dispatcher returns one of
+ * these regardless of which underlying strategy succeeded; `strategy`
+ * records which one actually ran.
+ */
+export interface RouteDiscoveryResult {
+  readonly routes: readonly DiscoveredRoute[];
+  readonly strategy: RouteDiscoveryStrategy;
+  /**
+   * Confidence in the discovered route list, 0..1. Sitemap and JSON
+   * config are deterministic (1). AI agent confidence varies with how
+   * much of the route list came from heuristics vs. enumerated sources.
+   */
+  readonly confidence: number;
+  /**
+   * Non-fatal warnings - strategies that were tried and failed, dynamic
+   * routes that could not be resolved, exclusions that matched nothing.
+   */
+  readonly warnings: readonly string[];
+}
