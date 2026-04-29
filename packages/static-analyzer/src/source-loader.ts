@@ -15,6 +15,9 @@ const EXTENSION_MAP: Readonly<Record<string, SourceKind>> = {
   '.jsx': 'jsx',
   '.tsx': 'tsx',
   '.css': 'css',
+  '.astro': 'astro',
+  '.vue': 'vue',
+  '.svelte': 'svelte',
 };
 
 /** Directory names skipped during recursion by default. */
@@ -75,6 +78,9 @@ function groupByKind(files: readonly SourceFile[]): AnalysisContext {
   const jsx: SourceFile[] = [];
   const tsx: SourceFile[] = [];
   const css: SourceFile[] = [];
+  const astro: SourceFile[] = [];
+  const vue: SourceFile[] = [];
+  const svelte: SourceFile[] = [];
   for (const file of files) {
     switch (file.kind) {
       case 'html':
@@ -89,7 +95,16 @@ function groupByKind(files: readonly SourceFile[]): AnalysisContext {
       case 'css':
         css.push(file);
         break;
+      case 'astro':
+        astro.push(file);
+        break;
+      case 'vue':
+        vue.push(file);
+        break;
+      case 'svelte':
+        svelte.push(file);
+        break;
     }
   }
-  return { html, jsx, tsx, css };
+  return { html, jsx, tsx, css, astro, vue, svelte };
 }

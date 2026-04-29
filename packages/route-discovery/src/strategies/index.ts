@@ -17,6 +17,7 @@
 import type { RouteDiscoveryResult, RouteDiscoveryStrategy } from '@sdet-wcag-toolkit/core';
 
 import type { RouteDiscoveryStrategyFn, StrategyRegistry } from '../dispatcher.js';
+import { createRouterScanStrategy } from './router-scan/index.js';
 import { createSitemapStrategy } from './sitemap.js';
 
 function notImplemented(name: RouteDiscoveryStrategy): RouteDiscoveryStrategyFn {
@@ -39,7 +40,7 @@ export function createDefaultStrategyRegistry(
   return {
     ai: overrides.ai ?? notImplemented('ai'),
     sitemap: overrides.sitemap ?? createSitemapStrategy(),
-    'router-scan': overrides['router-scan'] ?? notImplemented('router-scan'),
+    'router-scan': overrides['router-scan'] ?? createRouterScanStrategy(),
     'json-config': overrides['json-config'] ?? notImplemented('json-config'),
   };
 }

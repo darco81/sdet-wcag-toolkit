@@ -44,5 +44,5 @@ export class StaticAnalyzerOrchestrator {
 
 /** Helper: build an empty context. Useful in tests. */
 export function emptyContext(): AnalysisContext {
-  return { html: [], jsx: [], tsx: [], css: [] };
+  return { html: [], jsx: [], tsx: [], css: [], astro: [], vue: [], svelte: [] };
 }

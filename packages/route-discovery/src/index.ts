@@ -14,3 +14,18 @@ export {
   createSitemapStrategy,
   urlToPath,
 } from './strategies/sitemap.js';
+
+export type { RouterScanStrategyOptions } from './strategies/router-scan/index.js';
+export { createRouterScanStrategy } from './strategies/router-scan/index.js';
+export type {
+  DetectedFramework,
+  FrameworkDetection,
+} from './strategies/router-scan/framework-detection.js';
+export { detectFramework } from './strategies/router-scan/framework-detection.js';
+export type { DirectoryReader, FileFilter, WalkOptions } from './strategies/router-scan/walker.js';
+export {
+  DEFAULT_WALK_IGNORE,
+  createInMemoryReader,
+  extensionFilter,
+  walkSubTree,
+} from './strategies/router-scan/walker.js';
