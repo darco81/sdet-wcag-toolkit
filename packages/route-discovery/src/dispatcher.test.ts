@@ -200,10 +200,10 @@ describe('createDefaultStrategyRegistry', () => {
     const aiResult = await registry.ai({ rootDir: '/proj' });
     expect(aiResult.routes).toEqual([]);
     expect(aiResult.warnings[0]).toMatch(/--use-ai/);
-    // json-config is the only strategy still stubbed in Phase 4.
+    // json-config without a configPath surfaces a "needs --config" warning.
     const jsonResult = await registry['json-config']({});
     expect(jsonResult.routes).toEqual([]);
-    expect(jsonResult.warnings[0]).toMatch(/not implemented yet/);
+    expect(jsonResult.warnings[0]).toMatch(/--config/);
   });
 
   it('overrides take precedence over defaults', async () => {

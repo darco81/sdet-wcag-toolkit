@@ -14,21 +14,11 @@
  * orchestrator, tests) can wire against it from day 1.
  */
 
-import type { RouteDiscoveryResult, RouteDiscoveryStrategy } from '@sdet-wcag-toolkit/core';
-
-import type { RouteDiscoveryStrategyFn, StrategyRegistry } from '../dispatcher.js';
+import type { StrategyRegistry } from '../dispatcher.js';
 import { createAiAgentStrategy } from './ai-agent.js';
+import { createJsonConfigStrategy } from './json-config.js';
 import { createRouterScanStrategy } from './router-scan/index.js';
 import { createSitemapStrategy } from './sitemap.js';
-
-function notImplemented(name: RouteDiscoveryStrategy): RouteDiscoveryStrategyFn {
-  return async (): Promise<RouteDiscoveryResult> => ({
-    routes: [],
-    strategy: name,
-    confidence: 0,
-    warnings: [`Strategy "${name}" is not implemented yet (V0.4 phase pending).`],
-  });
-}
 
 /**
  * Build the default strategy registry. Tests and Pro extensions can
@@ -47,6 +37,6 @@ export function createDefaultStrategyRegistry(
     ai: overrides.ai ?? createAiAgentStrategy(),
     sitemap: overrides.sitemap ?? createSitemapStrategy(),
     'router-scan': overrides['router-scan'] ?? createRouterScanStrategy(),
-    'json-config': overrides['json-config'] ?? notImplemented('json-config'),
+    'json-config': overrides['json-config'] ?? createJsonConfigStrategy(),
   };
 }

@@ -22,6 +22,18 @@ export type {
 } from './strategies/ai-agent.js';
 export { createAiAgentStrategy, parseAiResponse } from './strategies/ai-agent.js';
 
+export type {
+  JsonConfigStrategyOptions,
+  WcagAuditConfig,
+  WcagAuthConfig,
+  WcagConfigFile,
+} from './strategies/json-config.js';
+export {
+  DEFAULT_CONFIG_FILENAME,
+  createJsonConfigStrategy,
+  parseConfig,
+} from './strategies/json-config.js';
+
 export type { RouterScanStrategyOptions } from './strategies/router-scan/index.js';
 export { createRouterScanStrategy } from './strategies/router-scan/index.js';
 export type {

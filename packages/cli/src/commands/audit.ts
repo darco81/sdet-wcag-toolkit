@@ -18,6 +18,7 @@
  * behavior - running without either flag is a byte-for-byte v0.3 audit.
  */
 
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import chalk from 'chalk';
@@ -34,6 +35,7 @@ import {
   type AiAgentInvoker,
   createAiAgentStrategy,
   createDefaultStrategyRegistry,
+  DEFAULT_CONFIG_FILENAME,
   dispatchRouteDiscovery,
   type RouteDiscoveryContext,
   type StrategyRegistry,
@@ -269,12 +271,12 @@ async function discoverRoutes(
   options: AuditOptions,
   deps: RunAuditDeps,
 ): Promise<RouteDiscoveryResult> {
+  const configPath = resolveConfigPath(options.config);
+
   const context: RouteDiscoveryContext = {
     ...(pathArg !== undefined && { rootDir: resolve(process.cwd(), pathArg) }),
     ...(options.url !== undefined && { baseUrl: options.url }),
-    ...(options.config !== undefined && {
-      configPath: resolve(process.cwd(), options.config),
-    }),
+    ...(configPath !== undefined && { configPath }),
     maxPages: resolveMaxPages(options.maxPages),
   };
 
@@ -285,6 +287,21 @@ async function discoverRoutes(
       strategy: options.strategy as RouteDiscoveryStrategy,
     }),
   });
+}
+
+/**
+ * Resolve the config path: explicit `--config` wins, otherwise look
+ * for `wcag.config.json` in the current working directory. Returns
+ * `undefined` when no config is reachable so the strategy can emit
+ * a clean "needs --config" warning instead of dispatching with a path
+ * that does not exist.
+ */
+function resolveConfigPath(explicit: string | undefined): string | undefined {
+  if (explicit !== undefined) {
+    return resolve(process.cwd(), explicit);
+  }
+  const auto = resolve(process.cwd(), DEFAULT_CONFIG_FILENAME);
+  return existsSync(auto) ? auto : undefined;
 }
 
 /**
