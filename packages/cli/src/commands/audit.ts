@@ -26,7 +26,6 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 
 import type {
-  MultiPageAuditReport,
   RouteDiscoveryResult,
   RouteDiscoveryStrategy,
   WcagFinding,
@@ -54,6 +53,7 @@ import {
 import { createDefaultOrchestrator, loadSources } from '@sdet-wcag-toolkit/static-analyzer';
 
 import { formatConsoleReport } from '../reporters/console.js';
+import { formatMultiPageConsoleReport } from '../reporters/multi-page-console.js';
 
 const VALID_STRATEGIES: readonly RouteDiscoveryStrategy[] = [
   'ai',
@@ -200,7 +200,7 @@ export async function runAudit(
     if (options.json) {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     } else {
-      renderMultiPageReport(report);
+      console.log(formatMultiPageConsoleReport(report));
     }
 
     if (
@@ -384,69 +384,6 @@ function resolveBaseUrl(options: AuditOptions, _deps: RunAuditDeps): string | un
     // Fall through - the orchestrator will throw a clearer error.
   }
   return undefined;
-}
-
-function renderMultiPageReport(report: MultiPageAuditReport): void {
-  const { summary } = report;
-  console.log(
-    chalk.bold(
-      `\nMulti-page audit complete - ${summary.pagesAudited} page(s) audited, ${summary.pagesSkipped} skipped, ${summary.uniqueFindings} unique finding(s) across ${summary.totalFindings} total occurrence(s).`,
-    ),
-  );
-  console.log(chalk.dim(`Base URL: ${report.baseUrl}`));
-  console.log(
-    chalk.dim(
-      `Discovery strategy: ${report.discovery.strategy} (confidence ${report.discovery.confidence.toFixed(2)})`,
-    ),
-  );
-  console.log(chalk.dim(`Total time: ${(report.totalDurationMs / 1000).toFixed(1)}s`));
-
-  if (report.crossPage.length > 0) {
-    console.log(chalk.bold('\nTop cross-page findings:'));
-    const top = [...report.crossPage]
-      .sort((a, b) => b.affectedPages.length - a.affectedPages.length)
-      .slice(0, 10);
-    for (const entry of top) {
-      const sev = severityColor(entry.finding.severity)(
-        entry.finding.severity.toUpperCase().padEnd(8),
-      );
-      console.log(
-        `  ${sev} ${entry.finding.ruleId} - ${chalk.bold(entry.affectedPages.length)} page(s)`,
-      );
-      console.log(chalk.dim(`    ${entry.finding.message}`));
-      if (entry.affectedPages.length <= 5) {
-        for (const url of entry.affectedPages) console.log(chalk.dim(`      • ${url}`));
-      } else {
-        for (const url of entry.affectedPages.slice(0, 3)) console.log(chalk.dim(`      • ${url}`));
-        console.log(chalk.dim(`      … +${entry.affectedPages.length - 3} more`));
-      }
-    }
-  }
-
-  const skipped = report.pages.filter((p) => p.skipped !== undefined);
-  if (skipped.length > 0) {
-    console.log(chalk.yellow(`\nSkipped pages (${skipped.length}):`));
-    for (const page of skipped) {
-      console.log(
-        chalk.yellow(
-          `  ! ${page.discoveredRoute.path} - ${page.skipped?.reason}: ${page.skipped?.note}`,
-        ),
-      );
-    }
-  }
-}
-
-function severityColor(severity: WcagFinding['severity']): (text: string) => string {
-  switch (severity) {
-    case 'critical':
-      return chalk.bgRed.white;
-    case 'serious':
-      return chalk.red;
-    case 'moderate':
-      return chalk.yellow;
-    case 'minor':
-      return chalk.cyan;
-  }
 }
 
 function renderDryRun(result: RouteDiscoveryResult): void {
