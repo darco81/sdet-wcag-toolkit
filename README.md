@@ -3,14 +3,17 @@
 WCAG 2.2 AA accessibility toolkit for modern web applications.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-237%20passing-green.svg)](#)
-[![Version](https://img.shields.io/badge/version-v0.3.0-orange.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-454%20passing-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-v0.4.0--unreleased-orange.svg)](CHANGELOG.md)
 
-> **Status:** v0.3.0 - **5 AI specialists, Lead orchestrator, A-F
-> grade.** Static + AI source-reading + dynamic analysis, markdown
-> reports with score, Claude Code integration. Self-fix engine and
-> multi-runtime support are commercial offerings (Pro tier); see
-> "Commercial engagement" below.
+> **Status:** v0.4 (unreleased) - **multi-page audit with 4-strategy
+> auto-discovery.** Static + AI source-reading + dynamic analysis,
+> sitemap / router-scan / AI agent / JSON-config route discovery,
+> cross-page deduplication, heat-map reports, plus the v0.3 5
+> specialists and Lead orchestrator. Self-fix engine, per-page
+> traces, authenticated routes, and parallel execution are
+> commercial offerings (Pro tier); see "Commercial engagement"
+> below.
 
 ## What it does
 
@@ -28,6 +31,13 @@ that emit the same `WcagFinding` shape and merge into a single report:
 - **Dynamic** - Playwright + axe-core runner for issues that only
   surface at runtime: rendered-DOM ARIA, keyboard traps, focus
   indicators, contrast computed against actual styles.
+
+**v0.4 adds multi-page** - `--multi-page` discovers the route list
+(sitemap → router-scan → AI agent → JSON config), audits each page
+in turn, and deduplicates findings cross-page so a single
+source-level fix collapses many page hits into one entry. See
+[docs/MULTI-PAGE-AUDIT.md](./docs/MULTI-PAGE-AUDIT.md) for the
+full guide.
 
 Reports lead with a 100-point **Score** and an A-F **Grade**
 (critical -15, serious -10, moderate -5, minor -2; A: 90+,
@@ -69,6 +79,15 @@ node packages/cli/dist/bin/wcag-toolkit.js audit --url https://example.com
 # Full v0.3 pipeline - static + AI + dynamic
 node packages/cli/dist/bin/wcag-toolkit.js audit ./src --url http://localhost:3000 --use-ai
 
+# v0.4: Multi-page audit (sitemap → router-scan → json-config fallback chain)
+node packages/cli/dist/bin/wcag-toolkit.js audit . --url https://staging.example.com --multi-page
+
+# v0.4: Pin a strategy and preview without launching the browser
+node packages/cli/dist/bin/wcag-toolkit.js audit . --url https://staging.example.com --multi-page --strategy=sitemap --dry-run
+
+# v0.4: Hand-curated route list (auto-detects wcag.config.json in cwd)
+node packages/cli/dist/bin/wcag-toolkit.js audit . --multi-page --strategy=json-config
+
 # Reports - dev long-form or one-page exec summary
 node packages/cli/dist/bin/wcag-toolkit.js audit ./src --json > findings.json
 node packages/cli/dist/bin/wcag-toolkit.js report --from findings.json --format dev --output audit.md
@@ -90,6 +109,25 @@ static-only flagged 2 false positives in test artifacts; v0.3 with
 `--use-ai` surfaced 16 real findings with file:line precision -
 including 8 systematic design-token contrast issues and 8
 heading-skip violations in markdown content.
+
+### What v0.4 finds that v0.3 doesn't
+
+v0.3 audits one page per `--url`. Real production sites have 20-50+
+pages; the same source-level issue manifests on every page that
+imports the offending component. v0.4's `--multi-page` discovers the
+full route list across four strategies and deduplicates findings
+cross-page - one entry per (`ruleId`, file:line) with an
+`affectedPages: string[]` array showing the reach. The console
+report leads with the heat map and the **single fix → many pages
+green** callout so the user immediately sees which fixes pay back
+the most.
+
+Verified end-to-end on `docs.astro.build`: 5712 routes discovered
+via sitemap-index recursion, capped at 3 with `--max-pages`,
+real Playwright + axe scan per page. On synthesised Astro / Next /
+Vue fixtures the router-scan strategy correctly resolves
+`[slug]` / `[...rest]` / route groups / private folders / API
+exclusions in under 10ms.
 
 ## Claude Code integration
 
@@ -121,16 +159,20 @@ If you use [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/claude
 
 ```
 packages/
-├── core/                 shared types, WCAG 2.2 catalog, scoring
-├── static-analyzer/      TS rule analyzer + orchestrator + source loader
-├── dynamic-tester/       Playwright + axe-core + keyboard-flow + focus-visibility
-├── reporter/             dev + exec markdown generators
+├── core/                 shared types, WCAG 2.2 catalog, scoring,
+│                          MultiPageAuditReport / CrossPageFinding
+├── static-analyzer/      TS rule analyzer + source loader (.astro, .vue, .svelte added in v0.4)
+├── dynamic-tester/       Playwright + axe-core + keyboard-flow + focus-visibility,
+│                          MultiPageOrchestrator + cross-page dedup (v0.4)
+├── reporter/             dev + exec markdown generators + multi-page heat-map report (v0.4)
+├── route-discovery/      v0.4 - dispatcher + sitemap, router-scan, AI agent, json-config strategies
 ├── runtime-core/         RuntimeAdapter contract + parser + HardGuard + 5 prompts
 ├── runtime-claude-code/  CC adapter via the native Task tool
 ├── orchestrator/         Lead orchestrator that dispatches 5 specialists
-└── cli/                  wcag-toolkit binary (with --use-ai flag)
+└── cli/                  wcag-toolkit binary (--use-ai, --multi-page, --strategy, --config, --max-pages)
 .claude/
-├── agents/               12 agents (2 leads + 5 static + 3 dynamic + 2 report)
+├── agents/               13 agents (2 leads + 5 static + 3 dynamic + 2 report
+│                          + route-discovery-agent in v0.4)
 ├── skills/               wcag-audit, wcag-fix, wcag-static-analyze,
 │                          wcag-dynamic-test, wcag-report
 └── commands/             /wcag:audit, /wcag:fix, /wcag:audit:static|:dynamic|:full,
@@ -151,8 +193,9 @@ docs/
 |---------|-------|--------|
 | v0.1 | Static analysis (TS + AI agents) | Released |
 | v0.2 | + Dynamic (Playwright + axe-core) + reports | Released |
-| **v0.3** | + 5 AI specialists, Lead orchestrator, A-F grade, --use-ai | **This release.** |
-| Pro v0.4+ | + modal-specialist, ecommerce-journey, multi-runtime, auto-fix | Private; commercial |
+| v0.3 | + 5 AI specialists, Lead orchestrator, A-F grade, --use-ai | Released |
+| **v0.4** | + Multi-page audit (4 strategies), cross-page dedup, heat map | **This release (unreleased).** |
+| Pro v0.4 alpha.4+ | + per-page traces, screenshots, auth, parallel, per-route routing, modal + ecommerce specialists, multi-runtime, auto-fix | Private; commercial |
 
 ## Commercial engagement
 
@@ -177,11 +220,14 @@ If you're auditing or building a product at scale and want the
 remediation loop and full agent stack on top of what this repo
 provides, get in touch via **sdet.it/services**.
 
-| What's public (this repo, v0.3) | What's commercial (Pro v0.4+) |
-|---------------------------------|-------------------------------|
+| What's public (this repo, v0.4) | What's commercial (Pro V0.4 alpha.4+) |
+|---------------------------------|---------------------------------------|
 | 5 specialist agents (CC-only) | + modal + ecommerce specialists |
 | Lead orchestrator + grading | + deep dedupe, three-mode audit |
 | Static + dynamic + AI source-reading | + multi-runtime (OpenCode, Ollama) |
+| Multi-page audit (4 strategies, sequential) | + per-page traces, screenshots, parallel BrowserContexts |
+| `audit.auth` schema parsed (ignored) | + cookie / header / `storageState` injection wired into Playwright |
+| Cross-page dedup + heat-map reports | + per-route specialist routing (saves AI cost) |
 | Manual fix walkthrough via /wcag:fix | + AST auto-fix + verifier + PR |
 | AGPL-3.0 license | Commercial license, on-prem option |
 

@@ -1,7 +1,9 @@
 # Architecture
 
-> Status: v0.3.0. AI specialists tier added on top of the v0.2
-> static + dynamic foundation.
+> Status: v0.4 (unreleased). Multi-page audit + 4-strategy route
+> discovery added on top of the v0.3 AI specialists / Lead
+> orchestrator foundation. v0.2 static + dynamic + reporter
+> remain unchanged.
 
 ## Shape
 
@@ -11,14 +13,18 @@ independently.
 
 ```
 packages/
-├── core/                    shared types, WCAG catalog, severity, scoring, grading
-├── static-analyzer/         AST/CSS analysis of source (HTML/CSS deterministic path)
-├── dynamic-tester/          Playwright + axe-core browser checks (v0.2+)
-├── reporter/                markdown / JSON / exec summary generation
+├── core/                    shared types, WCAG catalog, severity, scoring, grading,
+│                             MultiPageAuditReport / CrossPageFinding (v0.4)
+├── static-analyzer/         AST/CSS analysis of source (HTML/CSS deterministic path);
+│                             .astro / .vue / .svelte recognised in v0.4
+├── dynamic-tester/          Playwright + axe-core browser checks (v0.2+),
+│                             MultiPageOrchestrator + cross-page dedup (v0.4)
+├── reporter/                markdown / JSON / exec summary; multi-page heat-map report (v0.4)
+├── route-discovery/         v0.4 - dispatcher + 4 strategies (sitemap, router-scan, ai, json-config)
 ├── runtime-core/            v0.3 - RuntimeAdapter, JSON parser, HardGuard, 5 prompts
 ├── runtime-claude-code/     v0.3 - CC adapter via Task tool
 ├── orchestrator/            v0.3 - LeadOrchestrator (parallel dispatch + dedupe + score)
-└── cli/                     wcag-toolkit entry point (--use-ai flag in v0.3)
+└── cli/                     wcag-toolkit entry point (--use-ai, --multi-page in v0.4)
 ```
 
 ## Data flow (legacy v0.2 view)
@@ -96,6 +102,60 @@ weighted score aggregation. Grade is score-derived (A: 90+, B: 75-89,
 C: 50-74, D: 25-49, F: <25), so it scales with severity rather than
 finding count.
 
+## v0.4 multi-page pipeline
+
+`--multi-page` plugs a discovery layer in front of the dynamic
+tester and a deduper after it. The discovery dispatcher tries
+strategies in a fallback chain (default `sitemap → router-scan →
+json-config`); explicit `--strategy=<name>` pins one. AI is
+opt-in (`--use-ai` or `--strategy=ai`) to avoid surprise token
+spend.
+
+```mermaid
+graph TD
+    A[wcag-toolkit audit . --url https://staging --multi-page] --> B[Route Discovery Dispatcher]
+    B --> C{Strategy}
+    C -->|default fallback| D[sitemap]
+    C -->|default fallback| E[router-scan]
+    C -->|opt-in| F[ai agent]
+    C -->|--config| G[json-config]
+
+    D --> H[GET /sitemap.xml + recurse index]
+    E --> I[FS walk: framework detectors]
+    F --> J[Task → route-discovery-agent]
+    G --> K[Read wcag.config.json]
+
+    H --> L[RouteDiscoveryResult]
+    I --> L
+    J --> L
+    K --> L
+
+    L --> M[MultiPageOrchestrator]
+    M --> N[Per page: navigate + axe + keyboard-flow + focus-visibility]
+    N --> O[buildCrossPageFindings]
+    O --> P[MultiPageAuditReport]
+    P --> Q[Heat map + cross-page reporter]
+```
+
+Discovery returns a `RouteDiscoveryResult` regardless of which
+strategy ran - `routes`, `strategy`, `confidence` (0..1), and
+`warnings`. The orchestrator iterates routes sequentially against
+one Playwright browser (started once, navigated per page, torn down
+at the end), records skips for dynamic-no-sample / runner-error /
+max-pages, and feeds the resulting `PageAuditResult[]` through the
+cross-page deduper. Findings group by `(ruleId, file:line)` for
+source-located, `(ruleId, selector)` for DOM-located, with a
+fallback by message; the canonical finding is the first occurrence
+and `affectedPages` lists every URL where it appeared. The reporter
+uses that count to surface the **single fix → many pages green**
+narrative.
+
+`--max-pages` is enforced by the orchestrator (counts only audited
+pages, not skips) and `--dry-run` bails out after discovery before
+the browser launches. `audit.baseUrl` from `wcag.config.json` is
+honored when `--url` is omitted, so a project with a config file
+can `wcag-toolkit audit . --multi-page` and have everything wired.
+
 ## Tier comparison
 
 What's in the public toolkit, what's gated to Pro, and what's
@@ -103,13 +163,15 @@ on the roadmap.
 
 ```mermaid
 graph LR
-    subgraph Public["Public v0.3.0 (AGPL-3.0)"]
+    subgraph Public["Public v0.4 (AGPL-3.0)"]
         A1[Static TS]
         A2[Dynamic Playwright]
         A3[5 AI Specialists]
         A4[Lead Orchestrator]
         A5[A-F Grading]
         A6[/wcag:audit skill]
+        A7[Multi-page 4-strategy discovery]
+        A8[Cross-page dedup + heat map]
     end
 
     subgraph Pro["Pro V0.4 alpha.3 (Commercial)"]
@@ -122,6 +184,10 @@ graph LR
     subgraph Pro4["Pro V0.4 alpha.4 (planned)"]
         C1[+modal-specialist]
         C2[+ecommerce-journey]
+        C3[Per-page traces + screenshots]
+        C4[Authenticated routes]
+        C5[Parallel BrowserContexts]
+        C6[Per-route specialist routing]
     end
 
     subgraph Enterprise["Pro V0.5 Enterprise (planned)"]

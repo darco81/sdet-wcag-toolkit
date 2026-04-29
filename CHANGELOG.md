@@ -7,7 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Added
+
+- **Multi-page audit** (`--multi-page`) - discover and audit a list
+  of pages instead of just `--url`. New
+  `@sdet-wcag-toolkit/route-discovery` package with four strategies:
+  - **`sitemap`** - fetches `/sitemap.xml`, falls back through
+    `sitemap-0.xml` and `sitemap_index.xml`, recurses into
+    `<sitemapindex>` documents (depth cap + cycle protection),
+    skips HTML 404 fallbacks via content sniff, filters default
+    exclusions (`/api/*`, `/og/*`, `/feed.xml`, etc.), rejects
+    cross-origin `<loc>` entries.
+  - **`router-scan`** - deterministic FS walk keyed off framework
+    conventions. Detectors for Astro (`src/pages/**/*.astro`),
+    Next.js App + Pages Routers (route groups, private folders, API
+    skip), Vue (vite-plugin-pages, with Nuxt riding the same
+    detector for now). SvelteKit / Remix / Gatsby / React Router are
+    detected from `package.json` but emit a "no detector yet"
+    warning so the dispatcher can fall through to AI / json-config.
+  - **`ai`** - dispatches the new `route-discovery-agent` through
+    Claude Code's `Task` tool. Reads `package.json` + framework
+    configs and emits routes plus `sampleUrl` resolved from
+    `getStaticPaths` / `generateStaticParams` / content collections.
+    Hand-rolled JSON validator (no zod dep).
+  - **`json-config`** - reads `wcag.config.json` with an injected
+    schema (baseUrl + pages + glob exclusions + auth section). The
+    auth section is parsed but ignored in the public toolkit; the
+    Pro tier consumes it for cookie / header / `storageState`
+    injection. Auto-detected in cwd or via `--config <path>`.
+- **Multi-page orchestrator** in `@sdet-wcag-toolkit/dynamic-tester`
+  - keeps the browser open across pages, runs the existing axe /
+  keyboard-flow / focus-visibility runners per page, tolerates
+  per-page errors as `runner-error` skips, honors `--max-pages`.
+- **Cross-page deduplication** - findings group by
+  `(ruleId, file:line)` for source-located, `(ruleId, selector)`
+  for DOM-located, with a fallback by message. Each canonical
+  finding carries `affectedPages: string[]` so a single source-level
+  fix collapses many page hits into one entry. Drives the "single
+  fix → many pages green" callout in reports.
+- **Multi-page reporters** - `formatMultiPageDevReport` (markdown
+  with header / heat map / cross-page section / per-page details
+  with auto-collapse beyond 20 routes / skipped routes table) and
+  `formatMultiPageConsoleReport` (terminal heat map with
+  PAGE/CRIT/SERI/MOD/MIN/TOTAL columns, top cross-page findings
+  sorted by reach, skipped pages grouped by reason).
+- **CLI flags:** `--multi-page`, `--strategy`, `--max-pages`,
+  `--config`, `--dry-run`. JSON output emits the full
+  `MultiPageAuditReport`. `audit.baseUrl` from `wcag.config.json`
+  is honored when `--url` is omitted. Exit code 1 when any
+  cross-page finding is critical or serious.
+- **Source-loader extension** - `.astro`, `.vue`, `.svelte` are now
+  recognised SourceKinds. Existing accessibility analyzers are
+  unaffected; future template-aware analyzers can opt in.
+- **`docs/MULTI-PAGE-AUDIT.md`** - long-form guide covering all
+  four strategies, the JSON config schema, dry-run + JSON output,
+  exit codes, troubleshooting, and example invocations.
+
+### Changed
+
+- **Backward-compat strict** - running without `--multi-page` is
+  byte-identical to v0.3 single-page audit. All v0.3 flags
+  (`--use-ai`, `--url`, `--wait-for`, `--json`, `--top`) keep their
+  exact semantics.
+- **Default registry composition** - the AI strategy ships without
+  an invoker by default; the CLI wires Claude Code's `TaskInvoker`
+  in only when `--use-ai` or `--strategy=ai` is set. Outside that
+  opt-in the AI strategy degrades gracefully with a "needs --use-ai"
+  warning instead of throwing.
+
+### Deferred to V0.4 alpha.4 (Pro tier)
+
+- Per-page Playwright trace recording.
+- Per-page screenshot sequences.
+- Authenticated routes (cookie / header / `storageState` injection).
+- Parallel page execution via `BrowserContext`-per-page.
+- Per-route specialist routing (e.g. `/checkout/*` →
+  ecommerce-journey + forms-accessibility only).
 
 ## [0.3.0] - 2026-04-25
 
