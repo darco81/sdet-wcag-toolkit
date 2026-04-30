@@ -118,4 +118,38 @@ describe('detectNextjsRoutes', () => {
 
     expect(routes).toEqual([]);
   });
+
+  it('handles optional catch-all routes [[...rest]] in App Router', () => {
+    const route = appRouterFileToRoute('app/shop/[[...slug]]/page.tsx');
+    expect(route?.path).toBe('/shop/[[...slug]]');
+    expect(route?.isDynamic).toBe(true);
+  });
+
+  it('handles optional catch-all routes [[...rest]] in Pages Router', () => {
+    const route = pagesRouterFileToRoute('pages/shop/[[...slug]].tsx');
+    expect(route?.path).toBe('/shop/[[...slug]]');
+    expect(route?.isDynamic).toBe(true);
+  });
+
+  it('skips not-found.tsx, default.tsx, and other non-page files in App Router', () => {
+    expect(appRouterFileToRoute('app/not-found.tsx')).toBeNull();
+    expect(appRouterFileToRoute('app/default.tsx')).toBeNull();
+    expect(appRouterFileToRoute('app/(group)/global-error.tsx')).toBeNull();
+  });
+
+  it('drops nested route groups while keeping the rest of the path', () => {
+    expect(appRouterFileToRoute('app/(marketing)/(landing)/about/page.tsx')?.path).toBe('/about');
+    expect(appRouterFileToRoute('app/(a)/(b)/(c)/page.tsx')?.path).toBe('/');
+  });
+
+  it('returns [] for an App Router that only contains api routes', async () => {
+    const reader = createInMemoryReader(ROOT, {
+      'app/api/health/route.ts': '',
+      'app/api/v1/users/route.ts': '',
+    });
+
+    const routes = await detectNextjsRoutes({ rootDir: ROOT, reader });
+
+    expect(routes).toEqual([]);
+  });
 });

@@ -74,4 +74,26 @@ describe('detectAstroRoutes', () => {
 
     expect(routes).toEqual([]);
   });
+
+  it('handles index.astro inside a dynamic folder', () => {
+    const route = astroFileToRoute('src/pages/[lang]/index.astro');
+    expect(route?.path).toBe('/[lang]');
+    expect(route?.isDynamic).toBe(true);
+  });
+
+  it('handles deeply nested dynamic routes', () => {
+    const route = astroFileToRoute('src/pages/[lang]/blog/[slug]/comments.astro');
+    expect(route?.path).toBe('/[lang]/blog/[slug]/comments');
+    expect(route?.isDynamic).toBe(true);
+  });
+
+  it('returns [] for an empty src/pages directory', async () => {
+    const reader = createInMemoryReader(ROOT, {
+      'src/pages/.keep': '',
+    });
+
+    const routes = await detectAstroRoutes({ rootDir: ROOT, reader });
+
+    expect(routes).toEqual([]);
+  });
 });

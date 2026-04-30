@@ -213,4 +213,66 @@ describe('createDefaultStrategyRegistry', () => {
     const result = await registry.ai({});
     expect(result.routes).toEqual([makeRoute('/custom')]);
   });
+
+  it('exposes every member of DEFAULT_FALLBACK_CHAIN as a registry key', () => {
+    const registry = createDefaultStrategyRegistry();
+    for (const strategy of DEFAULT_FALLBACK_CHAIN) {
+      expect(registry[strategy]).toBeDefined();
+    }
+  });
+
+  it('also exposes the ai strategy even though it is not in the default chain', () => {
+    const registry = createDefaultStrategyRegistry();
+    expect(registry.ai).toBeDefined();
+  });
+
+  it('the ai strategy override survives even when no other override is supplied', async () => {
+    const customAi: RouteDiscoveryStrategyFn = async () => fixedResult('ai', [makeRoute('/x')]);
+    const registry = createDefaultStrategyRegistry({ ai: customAi });
+    const result = await dispatchRouteDiscovery({ rootDir: '/p' }, registry, { strategy: 'ai' });
+    expect(result.strategy).toBe('ai');
+    expect(result.routes).toEqual([makeRoute('/x')]);
+  });
+});
+
+describe('dispatchRouteDiscovery - additional edge cases', () => {
+  it('returns the empty result of the last strategy when every fallback fails', async () => {
+    const sitemapFn = emptyStrategy('sitemap', 'no sitemap');
+    const routerFn = emptyStrategy('router-scan', 'no framework detected');
+    const jsonFn = emptyStrategy('json-config', 'no config');
+    const registry = createDefaultStrategyRegistry({
+      sitemap: sitemapFn,
+      'router-scan': routerFn,
+      'json-config': jsonFn,
+    });
+
+    const result = await dispatchRouteDiscovery({ baseUrl: 'http://x' }, registry);
+
+    expect(result.routes).toEqual([]);
+    expect(result.confidence).toBe(0);
+    // Warnings from every attempted strategy are aggregated.
+    expect(result.warnings.some((w) => w.includes('no sitemap'))).toBe(true);
+    expect(result.warnings.some((w) => w.includes('no framework detected'))).toBe(true);
+  });
+
+  it('throws when an explicit strategy is missing from the registry', async () => {
+    const registry = createDefaultStrategyRegistry();
+    delete (registry as Partial<StrategyRegistry>).ai;
+
+    await expect(dispatchRouteDiscovery({}, registry, { strategy: 'ai' })).rejects.toThrow();
+  });
+
+  it('honors the maxPages cap on the dispatched result', async () => {
+    const routes = Array.from({ length: 8 }, (_, i) => makeRoute(`/p${i}`));
+    const sitemapFn = strategyReturning('sitemap', routes);
+    const registry = createDefaultStrategyRegistry({ sitemap: sitemapFn });
+
+    const result = await dispatchRouteDiscovery(
+      { baseUrl: 'http://x', maxPages: 3 },
+      registry,
+      { strategy: 'sitemap' },
+    );
+
+    expect(result.routes).toHaveLength(3);
+  });
 });

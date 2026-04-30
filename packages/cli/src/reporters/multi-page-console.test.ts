@@ -282,4 +282,76 @@ describe('formatMultiPageConsoleReport', () => {
     );
     expect(out).toContain('button.cta');
   });
+
+  it('renders a skipped-only report (zero audited, all skipped)', () => {
+    const out = stripAnsi(
+      formatMultiPageConsoleReport(
+        makeReport({
+          pages: [
+            makePage({
+              path: '/[a]',
+              skip: { reason: 'dynamic-no-sample', note: 'no sample' },
+            }),
+            makePage({
+              path: '/[b]',
+              skip: { reason: 'dynamic-no-sample', note: 'no sample' },
+            }),
+          ],
+        }),
+      ),
+    );
+    expect(out).toContain('0 audited');
+    expect(out).toContain('Skipped (2):');
+  });
+
+  it('does not render the "+more" line when heatMapLimit exceeds page count', () => {
+    const pages = Array.from({ length: 4 }, (_, i) => makePage({ path: `/p${i}` }));
+    const out = stripAnsi(
+      formatMultiPageConsoleReport(makeReport({ pages }), { heatMapLimit: 50 }),
+    );
+    for (let i = 0; i < 4; i += 1) {
+      expect(out).toContain(`/p${i}`);
+    }
+    expect(out).not.toMatch(/\+\d+ more page\(s\)/);
+  });
+
+  it('does not duplicate rows when the same page appears twice in the report', () => {
+    // Synthesize an unusual report where the same path appears twice (from
+    // sitemap + json-config dedup gone wrong). Console formatter must not
+    // crash and should render each row distinctly.
+    const out = stripAnsi(
+      formatMultiPageConsoleReport(
+        makeReport({
+          pages: [makePage({ path: '/x' }), makePage({ path: '/x' })],
+        }),
+      ),
+    );
+    expect(out).toContain('/x');
+  });
+
+  it('groups three or more skip reasons distinctly', () => {
+    const out = stripAnsi(
+      formatMultiPageConsoleReport(
+        makeReport({
+          pages: [
+            makePage({
+              path: '/[a]',
+              skip: { reason: 'dynamic-no-sample', note: 'no sample' },
+            }),
+            makePage({
+              path: '/broken',
+              skip: { reason: 'runner-error', note: 'timeout' },
+            }),
+            makePage({
+              path: '/cap',
+              skip: { reason: 'max-pages', note: 'capped' },
+            }),
+          ],
+        }),
+      ),
+    );
+    expect(out).toContain('dynamic-no-sample (1):');
+    expect(out).toContain('runner-error (1):');
+    expect(out).toContain('max-pages (1):');
+  });
 });

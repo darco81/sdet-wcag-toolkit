@@ -379,6 +379,81 @@ describe('MultiPageOrchestrator cleanup', () => {
   });
 });
 
+describe('MultiPageOrchestrator edge cases', () => {
+  it('returns a valid empty report when discovery has zero routes', async () => {
+    const auditPage: PageAuditFn = vi.fn();
+    const orch = new MultiPageOrchestrator({ auditPage });
+
+    const report = await orch.run({ baseUrl: BASE, discovery: makeDiscovery([]) });
+
+    expect(auditPage).not.toHaveBeenCalled();
+    expect(report.summary).toEqual({
+      pagesAudited: 0,
+      pagesSkipped: 0,
+      totalFindings: 0,
+      uniqueFindings: 0,
+    });
+    expect(report.pages).toEqual([]);
+    expect(report.crossPage).toEqual([]);
+  });
+
+  it('produces a report shape equivalent to single-page audit when given exactly one route', async () => {
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [makeFinding('only', 'src/Home.astro', 1)],
+      durationMs: 5,
+    }));
+    const orch = new MultiPageOrchestrator({ auditPage });
+
+    const report = await orch.run({
+      baseUrl: BASE,
+      discovery: makeDiscovery([makeRoute({ path: '/' })]),
+    });
+
+    expect(report.summary.pagesAudited).toBe(1);
+    expect(report.summary.totalFindings).toBe(1);
+    expect(report.summary.uniqueFindings).toBe(1);
+    expect(report.pages[0]?.auditedUrl).toBe(`${BASE}/`);
+  });
+
+  it('produces a skipped-only report when every route is dynamic-no-sample', async () => {
+    const auditPage: PageAuditFn = vi.fn();
+    const orch = new MultiPageOrchestrator({ auditPage });
+
+    const report = await orch.run({
+      baseUrl: BASE,
+      discovery: makeDiscovery([
+        makeRoute({ path: '/[a]', isDynamic: true }),
+        makeRoute({ path: '/[b]', isDynamic: true }),
+        makeRoute({ path: '/[c]', isDynamic: true }),
+      ]),
+    });
+
+    expect(auditPage).not.toHaveBeenCalled();
+    expect(report.summary.pagesAudited).toBe(0);
+    expect(report.summary.pagesSkipped).toBe(3);
+    for (const p of report.pages) {
+      expect(p.skipped?.reason).toBe('dynamic-no-sample');
+    }
+  });
+
+  it('records totalDurationMs as a non-negative number', async () => {
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [],
+      durationMs: 1,
+    }));
+    const orch = new MultiPageOrchestrator({ auditPage });
+
+    const report = await orch.run({
+      baseUrl: BASE,
+      discovery: makeDiscovery([makeRoute({ path: '/' })]),
+    });
+
+    expect(report.totalDurationMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
 describe('resolveAuditUrl', () => {
   it('joins baseUrl + path for static routes', () => {
     expect(resolveAuditUrl(BASE, makeRoute({ path: '/about' }))).toBe(`${BASE}/about`);

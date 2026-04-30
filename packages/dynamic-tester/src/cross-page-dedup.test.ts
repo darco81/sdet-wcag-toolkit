@@ -200,3 +200,79 @@ describe('groupingKey', () => {
     expect(groupingKey(f)).toBe('fallback::r::msg');
   });
 });
+
+describe('buildCrossPageFindings - additional edge cases', () => {
+  it('does not duplicate the same page in affectedPages when a finding fires twice on it', () => {
+    const f = sourceFinding({
+      ruleId: 'landmark-main',
+      file: 'src/Layout.astro',
+      line: 12,
+      message: 'No <main>.',
+    });
+    // Two findings with the same id-key on the same URL - the orchestrator
+    // would normally dedupe by id, but the cross-page builder must also
+    // handle the case defensively.
+    const result = buildCrossPageFindings([
+      page('https://x.com/a', [structuredClone(f), structuredClone(f)]),
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.affectedPages).toEqual(['https://x.com/a']);
+  });
+
+  it('emits affectedPages sorted lexicographically for stable report output', () => {
+    const f = sourceFinding({
+      ruleId: 'landmark-main',
+      file: 'src/Layout.astro',
+      line: 12,
+      message: '...',
+    });
+    const result = buildCrossPageFindings([
+      page('https://x.com/zebra', [structuredClone(f)]),
+      page('https://x.com/apple', [structuredClone(f)]),
+      page('https://x.com/mango', [structuredClone(f)]),
+    ]);
+
+    expect(result[0]?.affectedPages).toEqual([
+      'https://x.com/apple',
+      'https://x.com/mango',
+      'https://x.com/zebra',
+    ]);
+  });
+
+  it('treats different selectors as distinct groupings', () => {
+    const a = selectorFinding({ ruleId: 'aria-label', selector: 'button.a', message: '...' });
+    const b = selectorFinding({ ruleId: 'aria-label', selector: 'button.b', message: '...' });
+    const result = buildCrossPageFindings([
+      page('https://x.com/1', [a]),
+      page('https://x.com/1', [b]),
+    ]);
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('uses auditedUrl when present and falls back to discoveredRoute.path otherwise', () => {
+    const f = sourceFinding({
+      ruleId: 'r',
+      file: 'src/A.astro',
+      line: 1,
+      message: '...',
+    });
+    const withUrl: PageAuditResult = {
+      discoveredRoute: { path: '/from-route', source: 'test', isDynamic: false },
+      auditedUrl: 'https://x.com/explicit',
+      findings: [structuredClone(f)],
+      durationMs: 1,
+    };
+    const withoutUrl: PageAuditResult = {
+      discoveredRoute: { path: '/from-route-only', source: 'test', isDynamic: false },
+      findings: [structuredClone(f)],
+      durationMs: 1,
+    };
+    const result = buildCrossPageFindings([withUrl, withoutUrl]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.affectedPages).toContain('https://x.com/explicit');
+    expect(result[0]?.affectedPages).toContain('/from-route-only');
+  });
+});

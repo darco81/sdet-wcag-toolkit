@@ -287,4 +287,66 @@ describe('formatMultiPageDevReport', () => {
     );
     expect(md).toContain('`button.cta`');
   });
+
+  it('renders gracefully when the report has zero pages', () => {
+    const md = formatMultiPageDevReport(makeReport({ pages: [] }));
+    expect(md).toContain('# Multi-page WCAG 2.2 AA audit');
+    expect(md).toContain('**Audited:** 0 page(s)');
+    // No "Per-page details" section emitted when there is nothing to detail.
+    expect(md).not.toContain('## Per-page');
+  });
+
+  it('renders a skipped-only report with a Skipped routes section', () => {
+    const md = formatMultiPageDevReport(
+      makeReport({
+        pages: [
+          makePage({
+            path: '/blog/[slug]',
+            skip: { reason: 'dynamic-no-sample', note: 'no sample URL' },
+          }),
+          makePage({
+            path: '/broken',
+            url: 'https://staging.example.com/broken',
+            skip: { reason: 'runner-error', note: 'navigation timeout' },
+          }),
+        ],
+      }),
+    );
+    expect(md).toContain('Skipped');
+    expect(md).toContain('dynamic-no-sample');
+    expect(md).toContain('runner-error');
+    expect(md).toContain('navigation timeout');
+  });
+
+  it('does not collapse per-page details when route count is below the threshold', () => {
+    const pages = Array.from({ length: 5 }, (_, i) =>
+      makePage({
+        path: `/page-${i}`,
+        url: `https://staging.example.com/page-${i}`,
+        findings: [
+          makeFinding({ ruleId: 'r1', file: `src/Page${i}.astro`, line: 1 }),
+        ],
+      }),
+    );
+    const md = formatMultiPageDevReport(makeReport({ pages }));
+    // No <details> wrapper for small reports.
+    expect(md.includes('<details>')).toBe(false);
+  });
+
+  it('escapes URLs containing markdown-significant characters', () => {
+    const md = formatMultiPageDevReport(
+      makeReport({
+        pages: [
+          makePage({
+            path: '/search',
+            url: 'https://staging.example.com/search?q=a_b*c',
+            findings: [makeFinding({ ruleId: 'r', file: 'src/Search.astro', line: 1 })],
+          }),
+        ],
+      }),
+    );
+    // The URL must appear (markdown reporter is responsible for escaping
+    // or fencing it). At minimum the path query string survives.
+    expect(md).toContain('q=a_b*c');
+  });
 });

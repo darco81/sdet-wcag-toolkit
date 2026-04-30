@@ -263,6 +263,124 @@ describe('createSitemapStrategy', () => {
     expect(DEFAULT_SITEMAP_EXCLUSIONS.some((re) => re.test('/sitemap-0.xml'))).toBe(true);
     expect(DEFAULT_SITEMAP_EXCLUSIONS.some((re) => re.test('/llms.txt'))).toBe(true);
   });
+
+  it('returns empty + warning when urlset is structurally valid but empty', async () => {
+    const empty = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`;
+    const fetcher = fetcherFromMap({ [`${BASE}/sitemap.xml`]: empty });
+    const strategy = createSitemapStrategy({ fetcher });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes).toEqual([]);
+    expect(result.confidence).toBe(0);
+  });
+
+  it('handles a sitemap index pointing at empty child sitemaps', async () => {
+    const emptyChild = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`;
+    const fetcher = fetcherFromMap({
+      [`${BASE}/sitemap.xml`]: ASTRO_STYLE_INDEX,
+      [`${BASE}/sitemap-0.xml`]: emptyChild,
+    });
+    const strategy = createSitemapStrategy({ fetcher });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes).toEqual([]);
+    // Index was hit but produced nothing - no "no usable sitemap" warning.
+    expect(result.warnings.some((w) => w.includes('No usable sitemap found'))).toBe(false);
+  });
+
+  it('survives <url> entries without a <loc> element', async () => {
+    const xml = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url><lastmod>2026-04-01</lastmod></url>
+      <url><loc>https://example.com/ok</loc></url>
+      <url></url>
+    </urlset>`;
+    const fetcher = fetcherFromMap({ [`${BASE}/sitemap.xml`]: xml });
+    const strategy = createSitemapStrategy({ fetcher });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes.map((r) => r.path)).toEqual(['/ok']);
+  });
+
+  it('preserves percent-encoded path segments', async () => {
+    const xml = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url><loc>https://example.com/blog/hello%20world</loc></url>
+      <url><loc>https://example.com/r%C3%A9sum%C3%A9</loc></url>
+    </urlset>`;
+    const fetcher = fetcherFromMap({ [`${BASE}/sitemap.xml`]: xml });
+    const strategy = createSitemapStrategy({ fetcher });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes.map((r) => r.path)).toContain('/blog/hello%20world');
+    expect(result.routes.map((r) => r.path)).toContain('/r%C3%A9sum%C3%A9');
+  });
+
+  it('rejects URLs from a different port even if host matches', async () => {
+    const xml = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url><loc>https://example.com:8080/leak</loc></url>
+      <url><loc>https://example.com/safe</loc></url>
+    </urlset>`;
+    const fetcher = fetcherFromMap({ [`${BASE}/sitemap.xml`]: xml });
+    const strategy = createSitemapStrategy({ fetcher });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes.map((r) => r.path)).toEqual(['/safe']);
+  });
+
+  it('scales to 100+ children in a sitemap index', async () => {
+    const childCount = 120;
+    const indexLocs = Array.from(
+      { length: childCount },
+      (_, i) =>
+        `<sitemap><loc>https://example.com/sitemap-${i}.xml</loc></sitemap>`,
+    ).join('\n');
+    const index = `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${indexLocs}</sitemapindex>`;
+
+    const map: Record<string, string> = { [`${BASE}/sitemap.xml`]: index };
+    for (let i = 0; i < childCount; i += 1) {
+      map[`${BASE}/sitemap-${i}.xml`] =
+        `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+        `<url><loc>https://example.com/p${i}</loc></url>` +
+        `</urlset>`;
+    }
+    const fetcher = fetcherFromMap(map);
+    const strategy = createSitemapStrategy({ fetcher });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes).toHaveLength(childCount);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('short-circuits a deep cycle via the seen-set even when maxDepth would allow it', async () => {
+    // Two indexes that loop. With high maxDepth the cycle would explode
+    // - the seen-set must catch it independently of the depth counter.
+    const indexA = `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <sitemap><loc>https://example.com/b.xml</loc></sitemap>
+    </sitemapindex>`;
+    const indexB = `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <sitemap><loc>https://example.com/a.xml</loc></sitemap>
+    </sitemapindex>`;
+    const fetch = vi.fn(async (url: string): Promise<string | null> => {
+      if (url === `${BASE}/sitemap.xml`) return indexA;
+      if (url === `${BASE}/a.xml`) return indexA;
+      if (url === `${BASE}/b.xml`) return indexB;
+      return null;
+    });
+    const strategy = createSitemapStrategy({ fetcher: fetch, maxDepth: 50 });
+
+    const result = await strategy({ baseUrl: BASE });
+
+    expect(result.routes).toEqual([]);
+    // Each unique sitemap fetched once: sitemap.xml, b.xml, a.xml.
+    const fetchedUrls = (fetch.mock.calls as readonly [string][]).map(([u]) => u);
+    const uniqueFetches = new Set(fetchedUrls);
+    expect(uniqueFetches.size).toBeLessThanOrEqual(3);
+  });
 });
 
 describe('urlToPath', () => {

@@ -83,4 +83,28 @@ describe('detectVueRoutes', () => {
 
     expect(routes).toEqual([]);
   });
+
+  it('handles deeply nested dynamic routes', () => {
+    expect(vueFileToRoute('src/pages/[lang]/blog/[slug].vue', 'src/pages')?.path).toBe(
+      '/[lang]/blog/[slug]',
+    );
+  });
+
+  it('treats catch-all routes as dynamic', () => {
+    const route = vueFileToRoute('src/pages/[...path].vue', 'src/pages');
+    expect(route?.path).toBe('/[...path]');
+    expect(route?.isDynamic).toBe(true);
+  });
+
+  it('detector filters non-.vue files at the walker level', async () => {
+    const reader = createInMemoryReader(ROOT, {
+      'src/pages/about.vue': '',
+      'src/pages/about.tsx': '', // not a .vue page - must be skipped by the detector
+      'src/pages/README.md': '',
+    });
+
+    const routes = await detectVueRoutes({ rootDir: ROOT, reader });
+
+    expect(routes.map((r) => r.path)).toEqual(['/about']);
+  });
 });
