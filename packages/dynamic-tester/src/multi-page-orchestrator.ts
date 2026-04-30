@@ -44,7 +44,24 @@ export interface MultiPageAuditOptions {
    * when the same SPA needs the same hydration wait everywhere.
    */
   readonly pageDefaults?: Pick<DynamicTarget, 'waitForMs' | 'waitForSelector'>;
+  /**
+   * Cleanup hook invoked from `run()`'s `finally` block - exactly once
+   * per `run()` call, regardless of success or failure. Tests inject a
+   * spy alongside `auditPage`; production wires it automatically when
+   * the default Playwright pipeline is used (`BrowserManager.stop()`).
+   */
+  readonly cleanup?: () => Promise<void>;
+  /**
+   * Soft cap for the cleanup hook in milliseconds. If `cleanup()` does
+   * not resolve within this many ms the orchestrator gives up and
+   * resolves anyway. Prevents a hung `browser.close()` from blocking
+   * the entire CLI process. Defaults to 10 000 ms.
+   */
+  readonly cleanupTimeoutMs?: number;
 }
+
+const DEFAULT_CLEANUP_TIMEOUT_MS = 10_000;
+const noopCleanup = async (): Promise<void> => {};
 
 /**
  * Result of auditing one page. Either findings + duration, or a skip
@@ -90,6 +107,8 @@ export class MultiPageOrchestrator {
   private readonly browserOptions: BrowserOptions;
   private readonly auditPage: PageAuditFn;
   private readonly pageDefaults: Pick<DynamicTarget, 'waitForMs' | 'waitForSelector'>;
+  private readonly cleanup: () => Promise<void>;
+  private readonly cleanupTimeoutMs: number;
 
   constructor(options: MultiPageAuditOptions = {}) {
     this.runners = options.runners
@@ -97,7 +116,16 @@ export class MultiPageOrchestrator {
       : [new AxeRunner(), new KeyboardFlowRunner(), new FocusVisibilityRunner()];
     this.browserOptions = options.browser ?? {};
     this.pageDefaults = options.pageDefaults ?? {};
-    this.auditPage = options.auditPage ?? this.buildDefaultAuditFn();
+    this.cleanupTimeoutMs = options.cleanupTimeoutMs ?? DEFAULT_CLEANUP_TIMEOUT_MS;
+
+    if (options.auditPage) {
+      this.auditPage = options.auditPage;
+      this.cleanup = options.cleanup ?? noopCleanup;
+    } else {
+      const pipeline = this.buildDefaultPipeline();
+      this.auditPage = pipeline.audit;
+      this.cleanup = options.cleanup ?? pipeline.cleanup;
+    }
   }
 
   list(): string[] {
@@ -112,93 +140,122 @@ export class MultiPageOrchestrator {
     const pages: PageAuditResult[] = [];
     let auditedCount = 0;
 
-    for (const route of input.discovery.routes) {
-      // Honor max-pages - record overflow as skipped so the report
-      // surfaces what the user truncated away.
-      if (cap !== undefined && auditedCount >= cap) {
-        pages.push({
-          discoveredRoute: route,
-          findings: [],
-          durationMs: 0,
-          skipped: {
-            reason: 'max-pages',
-            note: `--max-pages=${cap} cap reached; remaining routes skipped.`,
-          },
+    try {
+      for (const route of input.discovery.routes) {
+        // Honor max-pages - record overflow as skipped so the report
+        // surfaces what the user truncated away.
+        if (cap !== undefined && auditedCount >= cap) {
+          pages.push({
+            discoveredRoute: route,
+            findings: [],
+            durationMs: 0,
+            skipped: {
+              reason: 'max-pages',
+              note: `--max-pages=${cap} cap reached; remaining routes skipped.`,
+            },
+          });
+          continue;
+        }
+
+        const url = resolveAuditUrl(baseUrl, route);
+        if (url === null) {
+          pages.push({
+            discoveredRoute: route,
+            findings: [],
+            durationMs: 0,
+            skipped: {
+              reason: 'dynamic-no-sample',
+              note: `Dynamic route ${route.path} has no sampleUrl; pass --config wcag.config.json to audit it.`,
+            },
+          });
+          continue;
+        }
+
+        const outcome = await this.auditPage({
+          target: { url, ...this.pageDefaults },
+          route,
         });
-        continue;
+
+        if (outcome.kind === 'skipped') {
+          pages.push({
+            discoveredRoute: route,
+            auditedUrl: url,
+            findings: [],
+            durationMs: outcome.durationMs,
+            skipped: { reason: outcome.reason, note: outcome.note },
+          });
+        } else {
+          pages.push({
+            discoveredRoute: route,
+            auditedUrl: url,
+            findings: outcome.findings,
+            durationMs: outcome.durationMs,
+          });
+          auditedCount += 1;
+        }
       }
 
-      const url = resolveAuditUrl(baseUrl, route);
-      if (url === null) {
-        pages.push({
-          discoveredRoute: route,
-          findings: [],
-          durationMs: 0,
-          skipped: {
-            reason: 'dynamic-no-sample',
-            note: `Dynamic route ${route.path} has no sampleUrl; pass --config wcag.config.json to audit it.`,
-          },
-        });
-        continue;
-      }
+      const crossPage = buildCrossPageFindings(pages);
+      const totalDurationMs = Date.now() - totalStart;
+      const auditedPages = pages.filter((p) => p.skipped === undefined);
+      const totalFindings = auditedPages.reduce((acc, p) => acc + p.findings.length, 0);
 
-      const outcome = await this.auditPage({
-        target: { url, ...this.pageDefaults },
-        route,
-      });
-
-      if (outcome.kind === 'skipped') {
-        pages.push({
-          discoveredRoute: route,
-          auditedUrl: url,
-          findings: [],
-          durationMs: outcome.durationMs,
-          skipped: { reason: outcome.reason, note: outcome.note },
-        });
-      } else {
-        pages.push({
-          discoveredRoute: route,
-          auditedUrl: url,
-          findings: outcome.findings,
-          durationMs: outcome.durationMs,
-        });
-        auditedCount += 1;
-      }
+      return {
+        baseUrl,
+        discovery: input.discovery,
+        pages,
+        crossPage,
+        totalDurationMs,
+        summary: {
+          pagesAudited: auditedPages.length,
+          pagesSkipped: pages.length - auditedPages.length,
+          totalFindings,
+          uniqueFindings: crossPage.length,
+        },
+      };
+    } finally {
+      await this.runCleanup();
     }
-
-    const crossPage = buildCrossPageFindings(pages);
-    const totalDurationMs = Date.now() - totalStart;
-    const auditedPages = pages.filter((p) => p.skipped === undefined);
-    const totalFindings = auditedPages.reduce((acc, p) => acc + p.findings.length, 0);
-
-    return {
-      baseUrl,
-      discovery: input.discovery,
-      pages,
-      crossPage,
-      totalDurationMs,
-      summary: {
-        pagesAudited: auditedPages.length,
-        pagesSkipped: pages.length - auditedPages.length,
-        totalFindings,
-        uniqueFindings: crossPage.length,
-      },
-    };
   }
 
   /**
-   * Real audit fn - keeps the browser open across pages. The first
-   * call lazily starts the browser; subsequent calls reuse the same
-   * Page. Cleanup is the orchestrator's responsibility (`run()`'s
-   * try/finally below).
+   * Invokes the cleanup hook with two safety nets:
+   *
+   *   - `Promise.race` against a timeout so a hung Playwright
+   *     `browser.close()` cannot block the CLI process forever.
+   *   - try/catch swallowing - cleanup errors are non-fatal and must
+   *     not poison the report.
+   */
+  private async runCleanup(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.cleanup(),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, this.cleanupTimeoutMs);
+        }),
+      ]);
+    } catch {
+      // Intentionally swallowed - cleanup failures (closed browser, lost
+      // connection, etc.) shouldn't break a successful audit report.
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Real audit pipeline - keeps the browser open across pages. The
+   * first audit call lazily starts the browser; subsequent calls reuse
+   * the same Page. The paired `cleanup` closes everything when the
+   * orchestrator's `run()` finishes (success OR failure path).
    *
    * In Phase 6 we keep this simple: one browser, one page, sequential
    * navigation. Pro tier (V0.4 alpha.4) layers parallelism via
    * BrowserContext-per-page.
    */
-  private buildDefaultAuditFn(): PageAuditFn {
+  private buildDefaultPipeline(): { audit: PageAuditFn; cleanup: () => Promise<void> } {
     let manager: BrowserManager | null = null;
-    return async ({ target }) => {
+    const audit: PageAuditFn = async ({ target }) => {
       const start = Date.now();
       try {
         if (!manager) {
@@ -228,6 +285,13 @@ export class MultiPageOrchestrator {
         };
       }
     };
+    const cleanup = async (): Promise<void> => {
+      if (!manager) return;
+      const m = manager;
+      manager = null;
+      await m.stop();
+    };
+    return { audit, cleanup };
   }
 }
 

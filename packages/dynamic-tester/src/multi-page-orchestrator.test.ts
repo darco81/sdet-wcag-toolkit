@@ -257,6 +257,125 @@ describe('MultiPageOrchestrator.run', () => {
   });
 });
 
+describe('MultiPageOrchestrator cleanup', () => {
+  it('invokes the cleanup hook after a successful run', async () => {
+    const cleanup = vi.fn(async () => {});
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [],
+      durationMs: 1,
+    }));
+    const orch = new MultiPageOrchestrator({ auditPage, cleanup });
+
+    await orch.run({
+      baseUrl: BASE,
+      discovery: makeDiscovery([makeRoute({ path: '/' })]),
+    });
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('invokes the cleanup hook even when the run loop has zero pages', async () => {
+    const cleanup = vi.fn(async () => {});
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [],
+      durationMs: 1,
+    }));
+    const orch = new MultiPageOrchestrator({ auditPage, cleanup });
+
+    await orch.run({ baseUrl: BASE, discovery: makeDiscovery([]) });
+
+    expect(auditPage).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('invokes the cleanup hook even when auditPage rejects', async () => {
+    const cleanup = vi.fn(async () => {});
+    const auditPage: PageAuditFn = vi.fn(async () => {
+      throw new Error('boom');
+    });
+    const orch = new MultiPageOrchestrator({ auditPage, cleanup });
+
+    await expect(
+      orch.run({
+        baseUrl: BASE,
+        discovery: makeDiscovery([makeRoute({ path: '/' })]),
+      }),
+    ).rejects.toThrow('boom');
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not block run() when cleanup hangs past cleanupTimeoutMs', async () => {
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [],
+      durationMs: 1,
+    }));
+    const cleanup = vi.fn(
+      () =>
+        new Promise<void>(() => {
+          /* never resolves - simulates hung browser.close() */
+        }),
+    );
+    const orch = new MultiPageOrchestrator({
+      auditPage,
+      cleanup,
+      cleanupTimeoutMs: 25,
+    });
+
+    const start = Date.now();
+    const report = await orch.run({
+      baseUrl: BASE,
+      discovery: makeDiscovery([makeRoute({ path: '/' })]),
+    });
+    const elapsed = Date.now() - start;
+
+    expect(report.summary.pagesAudited).toBe(1);
+    expect(elapsed).toBeLessThan(500);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows cleanup errors so the report still resolves', async () => {
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [],
+      durationMs: 1,
+    }));
+    const cleanup = vi.fn(async () => {
+      throw new Error('close failed');
+    });
+    const orch = new MultiPageOrchestrator({ auditPage, cleanup });
+
+    const report = await orch.run({
+      baseUrl: BASE,
+      discovery: makeDiscovery([makeRoute({ path: '/' })]),
+    });
+
+    expect(report.summary.pagesAudited).toBe(1);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to a no-op cleanup when none is supplied alongside a custom auditPage', async () => {
+    // Belt-and-braces: a user-injected auditPage with no cleanup must not
+    // crash run() because the orchestrator has nothing to clean up.
+    const auditPage: PageAuditFn = vi.fn(async () => ({
+      kind: 'audited',
+      findings: [],
+      durationMs: 1,
+    }));
+    const orch = new MultiPageOrchestrator({ auditPage });
+
+    await expect(
+      orch.run({
+        baseUrl: BASE,
+        discovery: makeDiscovery([makeRoute({ path: '/' })]),
+      }),
+    ).resolves.toBeDefined();
+  });
+});
+
 describe('resolveAuditUrl', () => {
   it('joins baseUrl + path for static routes', () => {
     expect(resolveAuditUrl(BASE, makeRoute({ path: '/about' }))).toBe(`${BASE}/about`);
