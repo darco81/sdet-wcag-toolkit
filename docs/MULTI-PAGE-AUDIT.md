@@ -45,6 +45,50 @@ sitemap → router-scan → json-config
 `ai` is **opt-in** to avoid surprise token spend. Enable it with
 `--strategy=ai` or by passing `--use-ai` alongside `--multi-page`.
 
+## Choosing a strategy
+
+The auto-fallback chain is good enough for most projects, but if you
+want to pin a strategy, here's how to pick.
+
+### Decision tree
+
+- **Have a deployed URL with a built sitemap?** → `sitemap`. One HTTP
+  request returns the post-build truth - every article, every
+  collection entry, every dynamic route already resolved.
+- **Running locally and want zero-cost iteration?** → `router-scan`.
+  Walks `src/pages/**` in milliseconds. Skeleton-true; misses dynamic
+  routes that depend on data.
+- **SPA with hand-rolled router or programmatic route generation?** →
+  `ai` (inside Claude Code) or `json-config`. The AI agent reads
+  routing files and content collections; `json-config` lets you list
+  URLs by hand.
+- **Authenticated area, complex selection rules, or tightly-curated
+  CI smoke?** → `json-config`. Maximum control. The Pro tier wires
+  the `auth` section into Playwright; the public toolkit accepts the
+  schema and audits unauthenticated.
+
+### Real-world example: portfolio.sdet.it (Astro)
+
+Same project, three strategies, three different route counts:
+
+| Strategy | Routes | What it sees |
+| --- | ---: | --- |
+| `router-scan` | 11 | Skeleton from `src/pages/**` - zero network, zero build |
+| `sitemap` | 35 | Post-build truth - 6 articles + 4 episodes + 24 archive entries |
+| `ai` | 35+ | Same as sitemap **plus** any routes the agent infers from content collections that aren't in the sitemap yet |
+
+**Recommendation:** use `sitemap` for complete coverage in CI or
+release audits, and `router-scan` for fast local iteration where you
+don't need every dynamic permutation.
+
+### Real-world example: docs.astro.build (Astro, large site)
+
+`sitemap` recurses from `sitemap-index.xml` through 8 nested sitemaps
+to pull **5 712 routes** in roughly one second. Audit those one by
+one and your CI will weep - pair `--strategy=sitemap` with
+`--max-pages=20` (or `50` in the public default) for a representative
+smoke, or tier up to Pro for parallel `BrowserContext` execution.
+
 ### Strategy 1: `sitemap`
 
 Fetches `<base>/sitemap.xml`, falling back to `sitemap-0.xml` and
