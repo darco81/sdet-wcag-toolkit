@@ -1,6 +1,6 @@
 {
   "name": "@sdet-wcag-toolkit/orchestrator",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "description": "Lead orchestrator - dispatches 5 WCAG specialist agents in parallel, scores, grades, and returns a merged finding set.",
   "license": "AGPL-3.0-or-later",
   "type": "module",

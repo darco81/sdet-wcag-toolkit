@@ -1,6 +1,6 @@
 {
   "name": "@sdet-wcag-toolkit/route-discovery",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Discover the list of pages to audit for multi-page WCAG runs (AI, sitemap, router-scan, JSON config)",
   "license": "AGPL-3.0-or-later",
   "type": "module",

@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-30
+
+Maintenance pass on top of v0.4.0. Real-world dogfood (portfolio
+audit, 2026-04-29 evening) surfaced one user-visible bug + a handful
+of documentation gaps. No public API changes; safe drop-in upgrade.
+
+### Fixed
+
+- **`MultiPageOrchestrator` no longer hangs after a multi-page
+  audit.** The default audit pipeline lazily started a
+  `BrowserManager` but never called `BrowserManager.stop()`, so the
+  Chromium process kept Node alive after `run()` resolved (~30 min
+  hang reported in real-world dogfood). The orchestrator now wraps
+  the run loop in a `try/finally` that invokes a paired cleanup
+  hook, with a soft `cleanupTimeoutMs` (default 10 s) and
+  swallowed cleanup errors so a hung `browser.close()` cannot poison
+  the report.
+
+### Changed
+
+- **Actionable warnings for dynamic routes** - `router-scan`'s
+  strategy-level warning and the orchestrator's per-route skip note
+  now list every fallback strategy explicitly (sitemap / ai /
+  json-config) instead of pointing only at `wcag.config.json`. The
+  warning includes a concrete dynamic route from the project as the
+  example so users see exactly what was skipped.
+
+### Added
+
+- **Strategy selection guide** in `docs/MULTI-PAGE-AUDIT.md` with a
+  decision tree, the `portfolio.sdet.it` real-world example
+  (router-scan: 11 routes, sitemap: 35 routes, ai: ≥35), and the
+  `docs.astro.build` 5 712-route sitemap-index example.
+- **README polish** - strategy selection summary, real-world
+  dogfood section, refreshed badges (501 tests passing, version
+  v0.4.1).
+
+### Tests
+
+- Test count: 454 → **501** (+47). Highlights: cleanup contract for
+  the multi-page orchestrator (cleanup-on-success / -on-throw /
+  hung-cleanup-timeout / swallowed cleanup errors), edge cases for
+  the sitemap strategy (100+ index children, cycles via seen-set,
+  percent-encoded paths, port-mismatch rejection), Next.js optional
+  catch-all `[[...rest]]`, dispatcher chain exhaustion, and
+  reporter rendering with skipped-only or single-page inputs.
+
+### Internal
+
+- Workspace package versions aligned: every package in the
+  monorepo now ships at `0.4.1`. Earlier releases left
+  `dynamic-tester` and `static-analyzer` at `0.2.0` as a
+  housekeeping miss. Workspace dependencies use `workspace:*` so
+  the alignment is purely cosmetic but improves downstream parsing.
+
+## [0.4.0] - 2026-04-29
+
 ### Added
 
 - **Multi-page audit** (`--multi-page`) - discover and audit a list

@@ -1,6 +1,6 @@
 {
   "name": "@sdet-wcag-toolkit/runtime-core",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "description": "Runtime adapter contract, structured JSON parser, HardGuard tool sanitizer, and shared specialist prompts.",
   "license": "AGPL-3.0-or-later",
   "type": "module",

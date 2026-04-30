@@ -1,6 +1,6 @@
 {
   "name": "@sdet-wcag-toolkit/dynamic-tester",
-  "version": "0.2.0",
+  "version": "0.4.1",
   "description": "Browser-based WCAG 2.2 AA testing via Playwright and axe-core",
   "license": "AGPL-3.0-or-later",
   "type": "module",
