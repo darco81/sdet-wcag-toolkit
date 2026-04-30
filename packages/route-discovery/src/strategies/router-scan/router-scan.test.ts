@@ -39,6 +39,26 @@ describe('createRouterScanStrategy', () => {
     expect(result.warnings.some((w) => w.includes('1 of 3 routes are dynamic'))).toBe(true);
   });
 
+  it('emits an actionable dynamic-route warning listing every fallback strategy', async () => {
+    const reader = createInMemoryReader(ROOT, {
+      'src/pages/index.astro': '',
+      'src/pages/blog/[slug].astro': '',
+    });
+    const strategy = createRouterScanStrategy({
+      detect: fixedDetect({ framework: 'astro', evidence: 'astro', scope: 'dependencies' }),
+      reader,
+    });
+
+    const result = await strategy({ rootDir: ROOT });
+
+    const dynamicWarning = result.warnings.find((w) => w.includes('dynamic'));
+    expect(dynamicWarning).toBeDefined();
+    expect(dynamicWarning).toMatch(/--strategy=sitemap/);
+    expect(dynamicWarning).toMatch(/--strategy=ai/);
+    expect(dynamicWarning).toMatch(/--strategy=json-config/);
+    expect(dynamicWarning).toMatch(/\[slug\]/); // example offered to reader
+  });
+
   it('emits routes for Next.js (App Router)', async () => {
     const reader = createInMemoryReader(ROOT, {
       'app/page.tsx': '',

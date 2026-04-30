@@ -99,6 +99,9 @@ describe('MultiPageOrchestrator.run', () => {
     const skipped = report.pages.find((p) => p.discoveredRoute.path === '/blog/[slug]');
     expect(skipped?.skipped?.reason).toBe('dynamic-no-sample');
     expect(skipped?.findings).toEqual([]);
+    expect(skipped?.skipped?.note).toMatch(/--strategy=sitemap/);
+    expect(skipped?.skipped?.note).toMatch(/--strategy=ai/);
+    expect(skipped?.skipped?.note).toMatch(/--strategy=json-config/);
 
     const sampled = report.pages.find((p) => p.discoveredRoute.path === '/users/[id]');
     expect(sampled?.auditedUrl).toBe(`${BASE}/users/42`);

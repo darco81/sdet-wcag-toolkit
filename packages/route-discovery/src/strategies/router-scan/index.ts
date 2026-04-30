@@ -130,11 +130,20 @@ function buildWarnings(
     );
   }
   if (dynamicCount > 0) {
+    const example = pickDynamicExample(routes);
     warnings.push(
-      `router-scan: ${dynamicCount} of ${routes.length} routes are dynamic (e.g. [slug]). The audit will skip them unless --config wcag.config.json supplies sample URLs.`,
+      `router-scan: ${dynamicCount} of ${routes.length} routes are dynamic (e.g. ${example}). The audit will skip them unless a sample URL is supplied. Fallback options:\n` +
+        `  • --strategy=sitemap  → enumerates post-build URLs (recommended for production audits)\n` +
+        `  • --strategy=ai       → resolves dynamic routes from content collections via the route-discovery agent\n` +
+        `  • --strategy=json-config → list explicit URLs in wcag.config.json (escape hatch for auth-walled or hand-rolled routing)`,
     );
   }
   return warnings;
+}
+
+function pickDynamicExample(routes: readonly DiscoveredRoute[]): string {
+  const first = routes.find((r) => r.isDynamic);
+  return first ? first.path : '[slug]';
 }
 
 /**

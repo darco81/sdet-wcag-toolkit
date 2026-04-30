@@ -165,7 +165,10 @@ export class MultiPageOrchestrator {
             durationMs: 0,
             skipped: {
               reason: 'dynamic-no-sample',
-              note: `Dynamic route ${route.path} has no sampleUrl; pass --config wcag.config.json to audit it.`,
+              note:
+                `Dynamic route ${route.path} has no sample URL. ` +
+                `Try --strategy=sitemap (post-build URLs), --strategy=ai (resolve from content collections), ` +
+                `or --strategy=json-config with explicit URLs in wcag.config.json.`,
             },
           });
           continue;
