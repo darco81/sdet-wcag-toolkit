@@ -3,15 +3,18 @@
 WCAG 2.2 AA accessibility toolkit for modern web applications.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-454%20passing-green.svg)](#)
-[![Version](https://img.shields.io/badge/version-v0.4.0--unreleased-orange.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-501%20passing-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-v0.4.1-blue.svg)](CHANGELOG.md)
 
-> **Status:** v0.4 (unreleased) - **multi-page audit with 4-strategy
-> auto-discovery.** Static + AI source-reading + dynamic analysis,
-> sitemap / router-scan / AI agent / JSON-config route discovery,
-> cross-page deduplication, heat-map reports, plus the v0.3 5
-> specialists and Lead orchestrator. Self-fix engine, per-page
-> traces, authenticated routes, and parallel execution are
+> **Status:** v0.4.1 - **multi-page audit with 4-strategy
+> auto-discovery,** plus a maintenance pass on top of v0.4.0:
+> graceful Playwright cleanup (no more 30-min hang after multi-page
+> audits), actionable warnings for dynamic routes, real-world
+> strategy selection guide. Static + AI source-reading + dynamic
+> analysis, sitemap / router-scan / AI agent / JSON-config route
+> discovery, cross-page deduplication, heat-map reports, plus the
+> v0.3 5 specialists and Lead orchestrator. Self-fix engine,
+> per-page traces, authenticated routes, and parallel execution are
 > commercial offerings (Pro tier); see "Commercial engagement"
 > below.
 
@@ -129,6 +132,44 @@ Vue fixtures the router-scan strategy correctly resolves
 `[slug]` / `[...rest]` / route groups / private folders / API
 exclusions in under 10ms.
 
+### Choosing a discovery strategy
+
+The four strategies trade off **completeness** (sees post-build
+routes) against **speed** and **dependency surface**. See
+[docs/MULTI-PAGE-AUDIT.md](./docs/MULTI-PAGE-AUDIT.md) §Choosing a
+strategy for the full decision tree; the short version:
+
+- **`sitemap`** - recommended for production audits. Fetches the
+  built sitemap and sees every dynamic route already resolved
+  (articles, content collections, generated pages).
+- **`router-scan`** - recommended for local dev. Walks
+  `src/pages/**` in milliseconds. Skeleton-true; misses routes that
+  depend on data.
+- **`ai`** (opt-in) - for projects with programmatic routing or
+  content collections that aren't in the sitemap yet. Costs Claude
+  Code tokens.
+- **`json-config`** - escape hatch for authenticated areas, complex
+  selection rules, or hand-curated CI smokes.
+
+Without `--strategy=` the dispatcher tries
+`sitemap → router-scan → json-config` in order; AI is opt-in.
+
+### Real-world dogfood
+
+- **portfolio.sdet.it** (Astro) - single-page audit took the site
+  from F → A in 8 commits during v0.3. Round 4 with `--multi-page`
+  surfaced 9 additional cross-page findings on 3 routes that the
+  single-page run missed.
+- **docs.astro.build** - 5 712 routes discovered via
+  `sitemap-index` recursion (8 nested sitemaps) in roughly one
+  second. Pair with `--max-pages` for a representative smoke;
+  Pro-tier parallel `BrowserContext` execution scales the rest.
+- **Strategy gap on portfolio.sdet.it** - same project, same day:
+  `router-scan` found 11 routes from `src/pages/**`, while
+  `sitemap` returned 35 (post-build with 6 articles + 4 episodes +
+  24 archive entries). Documented as a built-in trade-off; see the
+  strategy guide above.
+
 ## Claude Code integration
 
 If you use [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/claude-code/overview):
@@ -194,7 +235,8 @@ docs/
 | v0.1 | Static analysis (TS + AI agents) | Released |
 | v0.2 | + Dynamic (Playwright + axe-core) + reports | Released |
 | v0.3 | + 5 AI specialists, Lead orchestrator, A-F grade, --use-ai | Released |
-| **v0.4** | + Multi-page audit (4 strategies), cross-page dedup, heat map | **This release (unreleased).** |
+| v0.4.0 | + Multi-page audit (4 strategies), cross-page dedup, heat map | Released |
+| **v0.4.1** | + Playwright cleanup fix, actionable dynamic-route warnings, strategy selection guide | **This release.** |
 | Pro v0.4 alpha.4+ | + per-page traces, screenshots, auth, parallel, per-route routing, modal + ecommerce specialists, multi-runtime, auto-fix | Private; commercial |
 
 ## Commercial engagement
