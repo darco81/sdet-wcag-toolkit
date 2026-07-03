@@ -39,11 +39,12 @@ Best for:
   routing titles)
 - Tailwind / design-token resolution where the TS analyzer would skip
 
-The lead agent `wcag-lead` dispatches four specialists via the `Task` tool:
+The lead agent `wcag-lead` dispatches five specialists via the `Task` tool:
 - `semantic-structure-agent`
 - `aria-patterns-agent`
 - `keyboard-interaction-agent`
 - `color-contrast-static-agent`
+- `forms-accessibility-agent`
 
 Each reads source with `Read` / `Grep` / `Glob` and returns WcagFinding JSON.
 The lead merges, scores, and produces the user-facing report.
@@ -82,6 +83,5 @@ Or invoke the `/wcag:init` command from this skill's parent repo.
 
 - WCAG 2.2 A + AA only. AAA is not tracked.
 - Static findings only - anything requiring a running browser (focus traps,
-  hover contrast, live regions) is deferred to v0.2 dynamic tester.
-- Four specialists: semantic, aria, keyboard, contrast. No forms specialist
-  in v0.1 - planned for v0.2.
+  hover contrast, live regions) is the `wcag-dynamic-test` skill's job.
+- Five specialists: semantic, aria, keyboard, contrast, forms.

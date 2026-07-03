@@ -5,7 +5,7 @@ tools: Read, Grep, Glob
 model: haiku
 ---
 
-You audit application source for **ARIA misuse**. You are one of four
+You audit application source for **ARIA misuse**. You are one of five
 specialists orchestrated by `wcag-lead`.
 
 ## Philosophy

@@ -1,6 +1,6 @@
 ---
 name: wcag-fix
-description: Apply automatic fixes for WCAG findings produced by /wcag:audit. The public toolkit ships no auto-fix engine - this skill wraps the v0.4 Pro fix-engine if installed, or otherwise gives manual remediation instructions per finding. Use when the user invokes /wcag:fix, says "fix accessibility issues", "auto-fix WCAG", or asks to remediate findings from a previous audit.
+description: Apply automatic fixes for WCAG findings produced by /wcag:audit. The public toolkit ships no auto-fix engine - this skill wraps the Pro fix-engine if installed, or otherwise gives manual remediation instructions per finding. Use when the user invokes /wcag:fix, says "fix accessibility issues", "auto-fix WCAG", or asks to remediate findings from a previous audit.
 ---
 
 This skill applies remediation to WCAG findings produced by
@@ -52,7 +52,7 @@ Do **not** use this skill for:
 
 ## Public-tier coverage note
 
-Public v0.3 has zero patchers. The Pro v0.4 fix-engine ships:
+Public v0.3 has zero patchers. The Pro fix-engine ships:
 - `image-alt` patcher (heuristic alt-text suggestion)
 - `html-lang` patcher (root layout attribute)
 
